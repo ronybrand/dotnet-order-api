@@ -5,19 +5,19 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0F341A9F-3D18-40D1-B5E3-737A25C4EBA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Order.Domain", "src\Order.Domain\Order.Domain.csproj", "{FDD0CB0C-F741-4DB1-94AD-D1D4C8057832}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderApi.Domain", "src\OrderApi.Domain\OrderApi.Domain.csproj", "{FDD0CB0C-F741-4DB1-94AD-D1D4C8057832}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Order.Application", "src\Order.Application\Order.Application.csproj", "{77853079-4D16-4454-8A65-09560120652B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderApi.Application", "src\OrderApi.Application\OrderApi.Application.csproj", "{77853079-4D16-4454-8A65-09560120652B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Order.Infrastructure", "src\Order.Infrastructure\Order.Infrastructure.csproj", "{10092C04-4D60-4EBC-840A-C84159211826}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderApi.Infrastructure", "src\OrderApi.Infrastructure\OrderApi.Infrastructure.csproj", "{10092C04-4D60-4EBC-840A-C84159211826}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Order.Api", "src\Order.Api\Order.Api.csproj", "{25C9DF51-207B-4A0A-BEA5-E88CC2845038}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderApi.Api", "src\OrderApi.Api\OrderApi.Api.csproj", "{25C9DF51-207B-4A0A-BEA5-E88CC2845038}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{16998C43-C4C7-4559-AB82-F27B71B28F62}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Order.Api.Test", "src\Test\Order.Api.Test\Order.Api.Test.csproj", "{7194621A-3890-4F9A-A4AB-9A5E9EC5C3B7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderApi.Test", "src\Test\OrderApi.Test\OrderApi.Test.csproj", "{7194621A-3890-4F9A-A4AB-9A5E9EC5C3B7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Order.Api.IntegrationTest", "src\Test\Order.Api.IntegrationTest\Order.Api.IntegrationTest.csproj", "{C67AE0C6-5021-4E0E-9055-E441B1A1EC37}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderApi.IntegrationTest", "src\Test\OrderApi.IntegrationTest\OrderApi.IntegrationTest.csproj", "{C67AE0C6-5021-4E0E-9055-E441B1A1EC37}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

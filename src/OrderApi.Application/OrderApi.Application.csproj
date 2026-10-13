@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Order.Domain\Order.Domain.csproj" />
+    <ProjectReference Include="..\OrderApi.Domain\OrderApi.Domain.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
