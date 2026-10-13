@@ -138,3 +138,26 @@ public class OrderValidatorsTests
     public void UpdateQuantity_Positive_IsValid() =>
         _quantity.TestValidate(new UpdateItemQuantityRequest(1)).ShouldNotHaveAnyValidationErrors();
 }
+
+public class SearchRequestValidatorTests
+{
+    private readonly SearchRequestValidator _validator = new();
+
+    [Fact]
+    public void Defaults_AreValid() =>
+        _validator.TestValidate(new OrderApi.Domain.Common.Search.SearchRequest()).ShouldNotHaveAnyValidationErrors();
+
+    [Fact]
+    public void NegativePage_Fails() =>
+        _validator.TestValidate(new OrderApi.Domain.Common.Search.SearchRequest(Page: -1)).ShouldHaveValidationErrorFor(r => r.Page);
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(101)]
+    public void SizeOutsideRange_Fails(int size) =>
+        _validator.TestValidate(new OrderApi.Domain.Common.Search.SearchRequest(Size: size)).ShouldHaveValidationErrorFor(r => r.Size);
+
+    [Fact]
+    public void MaxSize_IsValid() =>
+        _validator.TestValidate(new OrderApi.Domain.Common.Search.SearchRequest(Size: 100)).ShouldNotHaveAnyValidationErrors();
+}
