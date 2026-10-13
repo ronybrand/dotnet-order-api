@@ -10,4 +10,9 @@ public sealed record SearchRequest(
     string? Sort = null,
     IReadOnlyDictionary<string, IReadOnlyList<FilterCondition>>? Filters = null);
 
-public sealed record PagedResult<T>(IReadOnlyList<T> Items, long Total, int Page, int Size);
+
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, long Total, int Page, int Size)
+{
+    public PagedResult<TOut> Map<TOut>(Func<T, TOut> selector) =>
+        new(Items.Select(selector).ToList(), Total, Page, Size);
+}
