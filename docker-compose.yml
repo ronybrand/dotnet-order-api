@@ -1,0 +1,53 @@
+# Local development dependencies. The API and worker run via `dotnet run` by default;
+# start them in containers with `docker compose --profile app up --build`.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orders
+    ports:
+      - "5432:5432"
+    volumes:
+      - dotnet-order-api-db:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management UI
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025" # SMTP catch-all (dev)
+      - "8025:8025" # web UI to inspect received e-mails
+
+  api:
+    profiles: [app]
+    build: { context: ., target: api }
+    depends_on: [postgres, rabbitmq]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Database=orders;Username=postgres;Password=postgres
+      Jwt__PublicKeyPath: /keys/jwt-public.pem
+      RabbitMq__Host: rabbitmq
+    volumes:
+      - ./keys:/keys:ro
+    ports:
+      - "8080:8080"
+
+  worker:
+    profiles: [app]
+    build: { context: ., target: worker }
+    depends_on: [rabbitmq, mailpit]
+    environment:
+      RabbitMq__Host: rabbitmq
+      Smtp__Host: mailpit
+
+volumes:
+  dotnet-order-api-db:

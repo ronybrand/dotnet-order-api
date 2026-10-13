@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore
+      - run: dotnet format --verify-no-changes
+      - run: dotnet build --no-restore -c Release
+      - name: Unit tests
+        run: dotnet test src/Test/OrderApi.Test --no-build -c Release
+      - name: Integration tests (Testcontainers, needs Docker)
+        run: dotnet test src/Test/OrderApi.IntegrationTest --no-build -c Release
