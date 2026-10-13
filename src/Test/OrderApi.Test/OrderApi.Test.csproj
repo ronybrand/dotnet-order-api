@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\OrderApi.Domain\OrderApi.Domain.csproj" />
     <ProjectReference Include="..\..\OrderApi.Infrastructure\OrderApi.Infrastructure.csproj" />
     <ProjectReference Include="..\..\OrderApi.Api\OrderApi.Api.csproj" />
+    <ProjectReference Include="..\..\OrderApi.Worker\OrderApi.Worker.csproj" />
   </ItemGroup>
 
 </Project>
