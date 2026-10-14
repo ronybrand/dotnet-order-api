@@ -22,6 +22,10 @@ export ASPNETCORE_ENVIRONMENT=Development
 export Database__MigrateOnStartup=false
 export ConnectionStrings__DefaultConnection="Host=localhost;Database=unused"
 export Jwt__PublicKeyPath="$tmp/public.pem"
+# The broker options are validated at startup; no connection is ever opened here.
+export RabbitMq__UserName=openapi
+export RabbitMq__Password=openapi
+export RabbitMq__AllowInsecure=true
 
 dotnet swagger tofile --output "$root/dist-openapi/openapi.json" \
   "$root/src/OrderApi.Api/bin/Release/net10.0/OrderApi.Api.dll" v1

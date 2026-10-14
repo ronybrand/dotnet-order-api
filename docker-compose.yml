@@ -47,6 +47,7 @@ services:
     build: { context: ., target: worker }
     depends_on: [rabbitmq, mailpit]
     environment:
+      DOTNET_ENVIRONMENT: Development # loads the guest/AllowInsecure settings of appsettings.Development.json
       RabbitMq__Host: rabbitmq
       Smtp__Host: mailpit
 

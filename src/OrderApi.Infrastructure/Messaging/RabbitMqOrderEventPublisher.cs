@@ -15,6 +15,7 @@ public static class RabbitMqTopology
         Password = options.Password,
         VirtualHost = options.VirtualHost,
         RequestedConnectionTimeout = TimeSpan.FromSeconds(3),
+        Ssl = new SslOption { Enabled = options.UseTls, ServerName = options.Host },
     };
 
     public static async Task DeclareAsync(IChannel channel, CancellationToken cancellationToken = default)

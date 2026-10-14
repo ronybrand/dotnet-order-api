@@ -11,6 +11,9 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 - `X-Forwarded-For` aceito apenas dos proxies em `ForwardedHeaders:KnownProxies`, para o rate limit
   particionar por cliente real atrás de proxy.
 - `docker-compose` publica a API só em `127.0.0.1`; workflows com `permissions: contents: read`.
+- RabbitMQ sem credencial padrão `guest/guest` e com TLS obrigatório (`RabbitMq:UseTls`); SMTP exige STARTTLS e
+  nunca envia credenciais em texto claro. Validação no startup; `AllowInsecure` só em `appsettings.Development.json`.
+- Auto-merge do Dependabot restrito a atualizações patch.
 
 ### Fixed
 

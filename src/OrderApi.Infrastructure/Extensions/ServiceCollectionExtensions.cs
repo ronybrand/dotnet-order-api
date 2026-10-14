@@ -25,7 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
 
-        services.Configure<RabbitMqOptions>(configuration.GetSection(RabbitMqOptions.SectionName));
+        services.AddRabbitMqOptions(configuration);
         services.AddSingleton<IOrderEventPublisher, RabbitMqOrderEventPublisher>();
         return services;
     }
