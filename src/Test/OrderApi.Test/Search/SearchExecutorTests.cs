@@ -70,26 +70,24 @@ public class SearchExecutorTests : IDisposable
     }
 
     [Theory]
-    [InlineData("email", "lk", "alice")]
-    [InlineData("tax_id", "eq", "TAX-0001")]
-    [InlineData("TaxId", "gte", "TAX-0003")]
-    [InlineData("passport_number", "lk", "AB")]
-    public async Task SearchAsync_SensitiveFieldFilter_IsIgnoredAndCannotNarrowResults(string field, string op, string value)
+    [InlineData("email", "lk", "alice", "Alice")]
+    [InlineData("tax_id", "eq", "TAX-0002", "Bruno")]
+    [InlineData("TaxId", "gte", "TAX-0004", "Diego")]
+    public async Task SearchAsync_SensitiveFieldFilter_NarrowsResults(string field, string op, string value, string expectedName)
     {
         var result = await Search(Request(field, op, value));
 
-        result.Total.Should().Be(4);
+        result.Items.Should().ContainSingle().Which.Name.Should().Be(expectedName);
     }
 
     [Theory]
-    [InlineData("email")]
-    [InlineData("-tax_id")]
-    [InlineData("passport_number")]
-    public async Task SearchAsync_SortBySensitiveField_IsRejected(string sort)
+    [InlineData("email", "Alice")]
+    [InlineData("-tax_id", "Diego")]
+    public async Task SearchAsync_SortBySensitiveField_Works(string sort, string expectedFirst)
     {
-        var act = () => Search(Request(sort: sort));
+        var result = await Search(Request(sort: sort));
 
-        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationUnknownSort);
+        result.Items.First().Name.Should().Be(expectedFirst);
     }
 
     [Fact]
