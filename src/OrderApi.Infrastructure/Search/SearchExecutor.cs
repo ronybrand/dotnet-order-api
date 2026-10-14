@@ -139,10 +139,10 @@ public static class SearchExecutor
             {
                 "eq" => Expression.Equal(member, Constant(condition.Value, property)),
                 "neq" => Expression.NotEqual(member, Constant(condition.Value, property)),
-                "gt" => Expression.GreaterThan(member, Constant(condition.Value, property)),
-                "gte" => Expression.GreaterThanOrEqual(member, Constant(condition.Value, property)),
-                "lt" => Expression.LessThan(member, Constant(condition.Value, property)),
-                "lte" => Expression.LessThanOrEqual(member, Constant(condition.Value, property)),
+                "gt" => Ordered(member, property, condition.Value, Expression.GreaterThan),
+                "gte" => Ordered(member, property, condition.Value, Expression.GreaterThanOrEqual),
+                "lt" => Ordered(member, property, condition.Value, Expression.LessThan),
+                "lte" => Ordered(member, property, condition.Value, Expression.LessThanOrEqual),
                 "in" => BuildIn(member, property, condition.Value),
                 "between" => BuildBetween(member, property, condition.Value),
                 "lk" => BuildLike(member, property, condition.Value),
@@ -169,6 +169,21 @@ public static class SearchExecutor
         }
     }
 
+    // Expression trees have no ">=" for strings (it would throw InvalidOperationException, i.e. a 400 for every
+    // string field); string.Compare(a, b) op 0 is the form EF Core translates.
+    private static BinaryExpression Ordered(
+        Expression member, IProperty property, object? raw, Func<Expression, Expression, BinaryExpression> compare)
+    {
+        var constant = Constant(raw, property);
+        if (property.ClrType != typeof(string))
+        {
+            return compare(member, constant);
+        }
+
+        var comparison = Expression.Call(typeof(string), nameof(string.Compare), null, member, constant);
+        return compare(comparison, Expression.Constant(0));
+    }
+
     private static MethodCallExpression BuildIn(Expression member, IProperty property, object? raw)
     {
         var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(property.ClrType))!;
@@ -189,8 +204,8 @@ public static class SearchExecutor
         }
 
         return Expression.AndAlso(
-            Expression.GreaterThanOrEqual(member, Constant(bounds[0], property)),
-            Expression.LessThanOrEqual(member, Constant(bounds[1], property)));
+            Ordered(member, property, bounds[0], Expression.GreaterThanOrEqual),
+            Ordered(member, property, bounds[1], Expression.LessThanOrEqual));
     }
 
     private static MethodCallExpression BuildLike(Expression member, IProperty property, object? raw)

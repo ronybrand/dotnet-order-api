@@ -11,6 +11,7 @@ namespace OrderApi.Test.Search;
 public class SearchExecutorTests : IDisposable
 {
     private static readonly string[] InFilterValues = ["Alice", "Diego"];
+    private static readonly string[] TextBetweenBounds = ["Bruno", "Carla"];
     private static readonly string[] EnumBetweenBounds = ["OPEN", "CONFIRMED"];
     private static readonly string[] BetweenBounds = ["2025-01-02T00:00:00+00:00", "2025-01-03T00:00:00+00:00"];
 
@@ -71,7 +72,7 @@ public class SearchExecutorTests : IDisposable
     }
 
     [Theory]
-    [InlineData("email", "lk", "alice", "Alice")]
+    [InlineData("email", "eq", "alice@example.com", "Alice")]
     [InlineData("tax_id", "eq", "TAX-0002", "Bruno")]
     [InlineData("TaxId", "gte", "TAX-0004", "Diego")]
     public async Task SearchAsync_SensitiveFieldFilter_NarrowsResults(string field, string op, string value, string expectedName)
@@ -89,6 +90,26 @@ public class SearchExecutorTests : IDisposable
         var result = await Search(Request(sort: sort));
 
         result.Items[0].Name.Should().Be(expectedFirst);
+    }
+
+    [Theory]
+    [InlineData("gt", "Bruno", "Carla,Diego")]
+    [InlineData("gte", "Carla", "Carla,Diego")]
+    [InlineData("lt", "Bruno", "Alice")]
+    [InlineData("lte", "Bruno", "Alice,Bruno")]
+    public async Task SearchAsync_OrderingOperatorsOnText_CompareStrings(string op, string value, string expected)
+    {
+        var result = await Search(Request("name", op, value, sort: "name"));
+
+        result.Items.Select(c => c.Name).Should().Equal(expected.Split(','));
+    }
+
+    [Fact]
+    public async Task SearchAsync_BetweenOnText_IsInclusive()
+    {
+        var result = await Search(Request("name", "between", TextBetweenBounds, sort: "name"));
+
+        result.Items.Select(c => c.Name).Should().Equal("Bruno", "Carla");
     }
 
     [Fact]
