@@ -29,7 +29,11 @@ public sealed class CreateOrderRequestValidator : AbstractValidator<CreateOrderR
         RuleFor(r => r.Items)
             .Must(items => items is null || items.Count <= OrderService.MaxItemsPerOrder)
             .WithMessage($"An order can have at most {OrderService.MaxItemsPerOrder} items.");
-        RuleForEach(r => r.Items).SetValidator(new ItemRequestValidator());
+        RuleFor(r => r.Items)
+            .Must(items => items is null || items.All(item => item is not null))
+            .WithMessage("'{PropertyName}' must not contain null elements.");
+        RuleForEach(r => r.Items).SetValidator(new ItemRequestValidator())
+            .When(r => r.Items is null || r.Items.All(item => item is not null));
     }
 }
 
