@@ -17,6 +17,7 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApiServices();
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddTrustedForwardedHeaders(builder.Configuration);
 builder.Services.AddApiRateLimiting();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 {
@@ -46,6 +47,8 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
+// No-op unless ForwardedHeaders:KnownProxies is configured (see ForwardedHeadersExtensions).
+app.UseForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
