@@ -25,6 +25,20 @@ public static class JwtAuthenticationExtensions
             .AddJwtBearer(options =>
             {
                 options.MapInboundClaims = false;
+                // A token without a subject cannot be attributed to anyone (audit columns, rate limit
+                // partition), so it is rejected instead of silently falling back to a shared identity.
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context =>
+                    {
+                        if (string.IsNullOrWhiteSpace(context.Principal?.FindFirst("sub")?.Value))
+                        {
+                            context.Fail("Token has no subject");
+                        }
+
+                        return Task.CompletedTask;
+                    },
+                };
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     IssuerSigningKey = signingKey,

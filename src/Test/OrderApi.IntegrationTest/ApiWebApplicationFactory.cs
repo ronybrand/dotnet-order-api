@@ -1,3 +1,4 @@
+using OrderApi.TestSupport;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
@@ -74,9 +75,9 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>, I
 
     private sealed class RecordingPublisher(ConcurrentQueue<OrderStatusChangedEvent> events) : IOrderEventPublisher
     {
-        public Task PublishStatusChangedAsync(OrderStatusChangedEvent @event, CancellationToken cancellationToken = default)
+        public Task PublishStatusChangedAsync(OrderStatusChangedEvent statusChanged, CancellationToken cancellationToken = default)
         {
-            events.Enqueue(@event);
+            events.Enqueue(statusChanged);
             return Task.CompletedTask;
         }
     }

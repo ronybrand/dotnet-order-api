@@ -16,3 +16,9 @@ dotnet_diagnostic.CA2007.severity = none
 
 [**/Migrations/*.cs]
 generated_code = true
+
+[src/Test/**.cs]
+# Test names follow Method_Scenario_ExpectedResult (project convention), and xunit collection
+# definitions are named *Collection by convention.
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1711.severity = none

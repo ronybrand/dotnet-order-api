@@ -40,7 +40,7 @@ public sealed partial class RabbitMqOrderEventPublisher(
     IOptions<RabbitMqOptions> options,
     ILogger<RabbitMqOrderEventPublisher> logger) : IOrderEventPublisher
 {
-    public async Task PublishStatusChangedAsync(OrderStatusChangedEvent @event, CancellationToken cancellationToken = default)
+    public async Task PublishStatusChangedAsync(OrderStatusChangedEvent statusChanged, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -54,13 +54,13 @@ public sealed partial class RabbitMqOrderEventPublisher(
                 routingKey: OrderEventMessages.Queue,
                 mandatory: false,
                 basicProperties: properties,
-                body: OrderEventMessages.Serialize(@event),
+                body: OrderEventMessages.Serialize(statusChanged),
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             // Never log the customer e-mail (PII): the order id is enough for traceability.
-            LogPublishFailed(logger, ex, @event.OrderId);
+            LogPublishFailed(logger, ex, statusChanged.OrderId);
         }
     }
 

@@ -12,5 +12,5 @@ public sealed record OrderStatusChangedEvent(
 public interface IOrderEventPublisher
 {
     /// <summary>Best-effort publish after the commit; implementations must not throw for broker failures.</summary>
-    Task PublishStatusChangedAsync(OrderStatusChangedEvent @event, CancellationToken cancellationToken = default);
+    Task PublishStatusChangedAsync(OrderStatusChangedEvent statusChanged, CancellationToken cancellationToken = default);
 }

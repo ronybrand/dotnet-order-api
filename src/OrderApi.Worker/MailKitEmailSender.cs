@@ -17,12 +17,12 @@ public sealed class SmtpOptions
 
 public sealed class MailKitEmailSender(IOptions<SmtpOptions> options) : IEmailSender
 {
-    public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
+    public async Task SendAsync(string recipient, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
         var settings = options.Value;
         var message = new MimeMessage();
         message.From.Add(MailboxAddress.Parse(settings.From));
-        message.To.Add(MailboxAddress.Parse(to));
+        message.To.Add(MailboxAddress.Parse(recipient));
         message.Subject = subject;
         message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
 

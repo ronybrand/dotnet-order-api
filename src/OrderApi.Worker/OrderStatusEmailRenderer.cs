@@ -33,11 +33,11 @@ public static class OrderStatusEmailRenderer
         </html>
         """;
 
-    public static string Subject(OrderStatusChangedEvent @event) => $"Order #{ShortId(@event)} - {@event.NewStatus}";
+    public static string Subject(OrderStatusChangedEvent statusChanged) => $"Order #{ShortId(statusChanged)} - {statusChanged.NewStatus}";
 
-    public static string Render(OrderStatusChangedEvent @event)
+    public static string Render(OrderStatusChangedEvent statusChanged)
     {
-        var (message, badge) = @event.NewStatus switch
+        var (message, badge) = statusChanged.NewStatus switch
         {
             "CONFIRMED" => ("Great news! Your order has been <strong>confirmed</strong> and is now being processed.", "#10b981"),
             "CANCELED" => ("We are sorry to inform you that your order has been <strong>canceled</strong>.", "#ef4444"),
@@ -49,14 +49,14 @@ public static class OrderStatusEmailRenderer
         return Template
             .Replace("{{badge}}", badge, StringComparison.Ordinal)
             .Replace("{{message}}", message, StringComparison.Ordinal)
-            .Replace("{{name}}", encoder.Encode(@event.CustomerName), StringComparison.Ordinal)
-            .Replace("{{newStatus}}", encoder.Encode(@event.NewStatus), StringComparison.Ordinal)
-            .Replace("{{oldStatus}}", encoder.Encode(@event.OldStatus), StringComparison.Ordinal)
-            .Replace("{{shortId}}", ShortId(@event), StringComparison.Ordinal)
-            .Replace("{{changedAt}}", @event.ChangedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture), StringComparison.Ordinal)
-            .Replace("{{total}}", @event.TotalAmount.ToString("F2", CultureInfo.InvariantCulture), StringComparison.Ordinal);
+            .Replace("{{name}}", encoder.Encode(statusChanged.CustomerName), StringComparison.Ordinal)
+            .Replace("{{newStatus}}", encoder.Encode(statusChanged.NewStatus), StringComparison.Ordinal)
+            .Replace("{{oldStatus}}", encoder.Encode(statusChanged.OldStatus), StringComparison.Ordinal)
+            .Replace("{{shortId}}", ShortId(statusChanged), StringComparison.Ordinal)
+            .Replace("{{changedAt}}", statusChanged.ChangedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("{{total}}", statusChanged.TotalAmount.ToString("F2", CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 
-    private static string ShortId(OrderStatusChangedEvent @event) =>
-        @event.OrderId.ToString("N", CultureInfo.InvariantCulture)[..8].ToUpperInvariant();
+    private static string ShortId(OrderStatusChangedEvent statusChanged) =>
+        statusChanged.OrderId.ToString("N", CultureInfo.InvariantCulture)[..8].ToUpperInvariant();
 }

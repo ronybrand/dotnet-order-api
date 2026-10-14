@@ -12,7 +12,7 @@ public enum ProcessingOutcome
 
 public interface IEmailSender
 {
-    Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default);
+    Task SendAsync(string recipient, string subject, string htmlBody, CancellationToken cancellationToken = default);
 }
 
 public sealed partial class NotificationProcessor(IEmailSender emailSender, ILogger<NotificationProcessor> logger)
@@ -22,8 +22,8 @@ public sealed partial class NotificationProcessor(IEmailSender emailSender, ILog
     /// <summary>Decides what to do with a message; retryCount is how many times it was already retried.</summary>
     public async Task<ProcessingOutcome> ProcessAsync(byte[] payload, int retryCount, CancellationToken cancellationToken = default)
     {
-        var @event = OrderEventMessages.Deserialize(payload);
-        if (@event is null)
+        var statusChanged = OrderEventMessages.Deserialize(payload);
+        if (statusChanged is null)
         {
             LogMalformed(logger);
             return ProcessingOutcome.DeadLetter;
@@ -31,20 +31,20 @@ public sealed partial class NotificationProcessor(IEmailSender emailSender, ILog
 
         try
         {
-            await emailSender.SendAsync(@event.CustomerEmail, OrderStatusEmailRenderer.Subject(@event), OrderStatusEmailRenderer.Render(@event), cancellationToken);
+            await emailSender.SendAsync(statusChanged.CustomerEmail, OrderStatusEmailRenderer.Subject(statusChanged), OrderStatusEmailRenderer.Render(statusChanged), cancellationToken);
             // The customer e-mail is PII and is never logged: the order id is enough for tracing.
-            LogSent(logger, @event.OrderId, @event.OldStatus, @event.NewStatus);
+            LogSent(logger, statusChanged.OrderId, statusChanged.OldStatus, statusChanged.NewStatus);
             return ProcessingOutcome.Ack;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             if (retryCount >= MaxRetries)
             {
-                LogGaveUp(logger, ex, @event.OrderId, MaxRetries);
+                LogGaveUp(logger, ex, statusChanged.OrderId, MaxRetries);
                 return ProcessingOutcome.DeadLetter;
             }
 
-            LogRetry(logger, ex, @event.OrderId, retryCount + 1, MaxRetries);
+            LogRetry(logger, ex, statusChanged.OrderId, retryCount + 1, MaxRetries);
             return ProcessingOutcome.Retry;
         }
     }

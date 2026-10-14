@@ -24,6 +24,11 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 
 ### Changed
 
+- Analisadores em `AnalysisMode=Recommended` (regras de segurança e design como erro), equivalente ao `bandit`.
+- Testes de contrato HTTP sem banco (autenticação maliciosa, campos desconhecidos, limites de busca) e projeto
+  compartilhado `OrderApi.TestSupport`.
+- README com diagramas Mermaid dos fluxos de requisição e de notificação; descrição, topics e homepage no GitHub.
+
 - Migração para .NET 10 e para as versões estáveis mais novas das dependências (RabbitMQ.Client 7,
   Swashbuckle 10, Testcontainers 4).
 
@@ -34,6 +39,11 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
   o Dependabot continua atualizando os SHAs.
 
 ### Fixed
+
+- Token JWT sem `sub` agora é rejeitado com 401 (antes caía numa identidade compartilhada `system`).
+- Id que não é GUID na rota responde 400 `VALIDATION-01` com o corpo de erro padrão (antes um 404 vazio).
+- O correlation id agora aparece em todas as linhas de log (o console não imprimia os escopos).
+- Vulnerabilidade `System.Security.Cryptography.Pkcs` 10.0.0 (transitiva do MailKit) fixada em 10.0.13.
 
 - `X-Request-Id` só é aceito se for um UUID canônico; qualquer outro valor é descartado e substituído por um
   UUID novo (corrige o alerta CodeQL `cs/log-forging`).

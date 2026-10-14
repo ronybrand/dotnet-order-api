@@ -150,7 +150,7 @@ public static class SearchExecutor
         }
     }
 
-    private static Expression BuildIn(Expression member, IProperty property, object? raw)
+    private static MethodCallExpression BuildIn(Expression member, IProperty property, object? raw)
     {
         var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(property.ClrType))!;
         foreach (var element in Elements(raw))
@@ -161,7 +161,7 @@ public static class SearchExecutor
         return Expression.Call(typeof(Enumerable), nameof(Enumerable.Contains), [property.ClrType], Expression.Constant(list), member);
     }
 
-    private static Expression BuildBetween(Expression member, IProperty property, object? raw)
+    private static BinaryExpression BuildBetween(Expression member, IProperty property, object? raw)
     {
         var bounds = Elements(raw).ToList();
         if (bounds.Count != 2)
@@ -174,7 +174,7 @@ public static class SearchExecutor
             Expression.LessThanOrEqual(member, Constant(bounds[1], property)));
     }
 
-    private static Expression BuildLike(Expression member, IProperty property, object? raw)
+    private static MethodCallExpression BuildLike(Expression member, IProperty property, object? raw)
     {
         if (property.ClrType != typeof(string))
         {
