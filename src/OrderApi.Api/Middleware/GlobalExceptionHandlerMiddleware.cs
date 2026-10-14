@@ -25,6 +25,19 @@ public sealed partial class GlobalExceptionHandlerMiddleware(RequestDelegate nex
                 StatusCodes.Status409Conflict,
                 new ErrorResponse("Record was modified by another request", ErrorCodes.ConflictConcurrentModification, null, context.TraceIdentifier));
         }
+        catch (BadHttpRequestException ex)
+        {
+            // Kestrel signals a client error (oversized body, malformed request) with its own status:
+            // answer it as such instead of logging an error and replying 500.
+            await WriteAsync(
+                context,
+                ex.StatusCode,
+                new ErrorResponse(
+                    ex.StatusCode == StatusCodes.Status413PayloadTooLarge ? "Request body too large" : "Invalid request",
+                    ErrorCodes.ValidationRequest,
+                    null,
+                    context.TraceIdentifier));
+        }
         catch (Exception ex)
         {
             // Full detail only in the log; the client always receives a generic message.

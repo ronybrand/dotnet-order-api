@@ -16,13 +16,14 @@ public sealed class CustomerService(
 {
     public async Task<CustomerDto> CreateAsync(CreateCustomerRequest request, CancellationToken cancellationToken = default)
     {
-        await AssertUniqueAsync(request.TaxId, request.PassportNumber, null, cancellationToken);
+        var taxId = CanonicalTaxId(request.TaxId);
+        await AssertUniqueAsync(taxId, request.PassportNumber, null, cancellationToken);
 
         var now = timeProvider.GetUtcNow();
         var customer = new Customer
         {
             Name = request.Name,
-            TaxId = request.TaxId,
+            TaxId = taxId,
             PassportNumber = NormalizePassport(request.PassportNumber),
             Email = request.Email,
             CreatedAt = now,
@@ -40,10 +41,11 @@ public sealed class CustomerService(
     public async Task<CustomerDto> UpdateAsync(Guid id, UpdateCustomerRequest request, CancellationToken cancellationToken = default)
     {
         var customer = await GetActiveAsync(id, cancellationToken);
-        await AssertUniqueAsync(request.TaxId, request.PassportNumber, id, cancellationToken);
+        var taxId = CanonicalTaxId(request.TaxId);
+        await AssertUniqueAsync(taxId, request.PassportNumber, id, cancellationToken);
 
         customer.Name = request.Name;
-        customer.TaxId = request.TaxId;
+        customer.TaxId = taxId;
         customer.PassportNumber = NormalizePassport(request.PassportNumber);
         customer.Email = request.Email;
         customer.UpdatedAt = timeProvider.GetUtcNow();
@@ -94,6 +96,11 @@ public sealed class CustomerService(
                 ErrorCodes.ConflictPassportNumber);
         }
     }
+
+    // Punctuation and case are formatting, not identity: "123.456-78" and "12345678" are the same document,
+    // so the stored value (and therefore the unique index) uses a single canonical form.
+    private static string CanonicalTaxId(string taxId) =>
+        string.Concat(taxId.Where(char.IsAsciiLetterOrDigit)).ToUpperInvariant();
 
     private static string? NormalizePassport(string? passportNumber) =>
         string.IsNullOrWhiteSpace(passportNumber) ? null : passportNumber;

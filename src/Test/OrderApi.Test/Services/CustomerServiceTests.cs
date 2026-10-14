@@ -42,6 +42,43 @@ public class CustomerServiceTests
         result.Name.Should().Be("Ana");
     }
 
+    [Theory]
+    [InlineData("123.456-78", "12345678")]
+    [InlineData("ab-12.cd/9", "AB12CD9")]
+    public async Task CreateAsync_FormattedTaxId_PersistsAndChecksCanonicalForm(string raw, string canonical)
+    {
+        Customer? saved = null;
+        _customers.Setup(r => r.AddAsync(It.IsAny<Customer>(), It.IsAny<CancellationToken>()))
+            .Callback<Customer, CancellationToken>((c, _) => saved = c);
+
+        await _service.CreateAsync(NewRequest(raw));
+
+        saved!.TaxId.Should().Be(canonical);
+        _customers.Verify(r => r.ExistsByTaxIdAsync(canonical, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_DifferentFormattingOfExistingTaxId_ThrowsConflict()
+    {
+        _customers.Setup(r => r.ExistsByTaxIdAsync("12345678", null, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var act = () => _service.CreateAsync(NewRequest("123.456-78"));
+
+        (await act.Should().ThrowAsync<ConflictDomainException>()).Which.Code.Should().Be(ErrorCodes.ConflictTaxId);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_FormattedTaxId_PersistsCanonicalForm()
+    {
+        var id = Guid.NewGuid();
+        var customer = new Customer { Id = id, Name = "Old", TaxId = "00000", Email = "o@x.com" };
+        _customers.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(customer);
+
+        await _service.UpdateAsync(id, new UpdateCustomerRequest("New", "987.65-x", null, "n@x.com"));
+
+        customer.TaxId.Should().Be("98765X");
+    }
+
     [Fact]
     public async Task CreateAsync_DuplicateTaxId_ThrowsConflict()
     {

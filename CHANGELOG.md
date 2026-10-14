@@ -14,6 +14,10 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 
 ### Fixed
 
+- `tax_id` persistido e comparado na forma canônica (maiúsculas, sem `.`/`-`/`/`); mínimo de 5 letras ou dígitos.
+- Quantidade por item limitada a `FieldLimits.MaxQuantity` (10.000).
+- Corpo acima do limite (413) e requisições malformadas do Kestrel não viram mais 500.
+- Imagens base do Dockerfile e do compose fixadas por digest (o Dependabot mantém atualizadas).
 - Regex de `tax_id`/`passport_number` usa `\z` em vez de `$`: `"12345678\n"` passava na validação e
   burlava o índice único.
 - `POST /orders/{id}/items` agora respeita `MaxItemsPerOrder`, antes só aplicado na criação.

@@ -2,7 +2,7 @@
 # start them in containers with `docker compose --profile app up --build`.
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -13,7 +13,7 @@ services:
       - dotnet-order-api-db:/var/lib/postgresql/data
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:3-management-alpine@sha256:606d8c0d6b3c18d1da9afc53bc7cdb2a8d5486df91b5a9830e9e07626c9ae281
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -22,7 +22,7 @@ services:
       - "127.0.0.1:15672:15672" # management UI
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:latest@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
     ports:
       - "127.0.0.1:1025:1025" # SMTP catch-all (dev)
       - "127.0.0.1:8025:8025" # web UI to inspect received e-mails
