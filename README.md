@@ -50,7 +50,7 @@ argument before the controller, which only delegates to the service. Creating or
 for create and `200` for the update-style endpoints (`204` for delete). A status change from `confirm` or `cancel`
 (not every update, and only if the customer has an e-mail) publishes to RabbitMQ after the database commit: a
 publish failure is only logged and never reaches the HTTP response. A separate `OrderApi.Worker` process consumes the
-queue and sends the e-mail through SMTP, retrying 3 times with a 2s backoff before nacking to the dead-letter queue.
+queue and sends the e-mail through SMTP, retrying 3 times with a 2s backoff before nacking to the dead-letter queue. An invalid recipient address is a permanent failure and goes to the dead-letter queue without retries. The worker talks plain SMTP to Mailpit by default; set `Smtp__UseStartTls=true`, `Smtp__UserName` and `Smtp__Password` for a real relay.
 The two paths never block each other.
 
 ## Domain
@@ -122,6 +122,8 @@ Every error has the shape `{ "message", "code", "params", "request_id" }`.
 | `CONFLICT-00` | 409 | concurrent modification (optimistic lock) |
 | `CONFLICT-01/02` | 409 | duplicate `tax_id` / `passport_number` |
 | `CONFLICT-03` | 409 | deleting a customer with orders |
+| `AUTH-01` | 401 | missing, invalid or expired token (`WWW-Authenticate: Bearer`) |
+| `AUTH-02` | 403 | authenticated but without the required role |
 | `RATE-00` | 429 | too many requests (100/min global, 10/min on customer writes) |
 | `INTERNAL-00` | 500 | unexpected error (generic message, detail only in the log) |
 

@@ -54,6 +54,17 @@ public class NotificationProcessorTests
     }
 
     [Fact]
+    public async Task ProcessAsync_PermanentSendFailure_GoesToDeadLetterWithoutRetrying()
+    {
+        _sender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new PermanentEmailException("Recipient address is not a valid mailbox"));
+
+        var outcome = await _processor.ProcessAsync(ValidPayload(), retryCount: 0);
+
+        outcome.Should().Be(ProcessingOutcome.DeadLetter);
+    }
+
+    [Fact]
     public async Task ProcessAsync_SendFailureAfterMaxRetries_GoesToDeadLetter()
     {
         _sender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
