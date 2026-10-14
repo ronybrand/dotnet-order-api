@@ -109,26 +109,63 @@ public class SecurityHeadersMiddlewareTests
 
 public class CorrelationIdMiddlewareTests
 {
-    [Fact]
-    public async Task InvokeAsync_WithHeader_ReusesIdAndEchoesIt()
+    private static async Task<DefaultHttpContext> Run(string? requestId)
     {
         var context = new DefaultHttpContext();
-        context.Request.Headers["X-Request-Id"] = "abc";
+        if (requestId is not null)
+        {
+            context.Request.Headers["X-Request-Id"] = requestId;
+        }
 
         await new CorrelationIdMiddleware(_ => Task.CompletedTask, NullLogger<CorrelationIdMiddleware>.Instance).InvokeAsync(context);
-
-        context.TraceIdentifier.Should().Be("abc");
-        context.Response.Headers["X-Request-Id"].ToString().Should().Be("abc");
+        return context;
     }
 
     [Fact]
-    public async Task InvokeAsync_WithoutHeader_GeneratesId()
+    public async Task InvokeAsync_WithUuidHeader_ReusesIdAndEchoesIt()
     {
-        var context = new DefaultHttpContext();
+        var id = Guid.NewGuid().ToString();
 
-        await new CorrelationIdMiddleware(_ => Task.CompletedTask, NullLogger<CorrelationIdMiddleware>.Instance).InvokeAsync(context);
+        var context = await Run(id);
 
-        context.Response.Headers["X-Request-Id"].ToString().Should().NotBeNullOrWhiteSpace();
+        context.TraceIdentifier.Should().Be(id);
+        context.Response.Headers["X-Request-Id"].ToString().Should().Be(id);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithUppercaseUuid_NormalizesToLowercase()
+    {
+        var id = Guid.NewGuid();
+
+        var context = await Run(id.ToString().ToUpperInvariant());
+
+        context.TraceIdentifier.Should().Be(id.ToString());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithoutHeader_GeneratesUuid()
+    {
+        var context = await Run(null);
+
+        Guid.TryParse(context.TraceIdentifier, out _).Should().BeTrue();
+        context.Response.Headers["X-Request-Id"].ToString().Should().Be(context.TraceIdentifier);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("trace-123")]
+    [InlineData("3f2a9c1e-0000-4000-8000-000000000001\r\nX-Injected: 1")]
+    [InlineData("3f2a9c1e-0000-4000-8000-000000000001\nfake log line")]
+    [InlineData("{3f2a9c1e-0000-4000-8000-000000000001}")]
+    [InlineData("3f2a9c1e00004000800000000000000a")]
+    [InlineData("")]
+    public async Task InvokeAsync_WithNonUuidHeader_IsDiscardedAndReplacedByNewUuid(string requestId)
+    {
+        var context = await Run(requestId);
+
+        context.TraceIdentifier.Should().NotBe(requestId);
+        Guid.TryParse(context.TraceIdentifier, out _).Should().BeTrue();
+        context.Response.Headers["X-Request-Id"].ToString().Should().Be(context.TraceIdentifier);
     }
 }
 

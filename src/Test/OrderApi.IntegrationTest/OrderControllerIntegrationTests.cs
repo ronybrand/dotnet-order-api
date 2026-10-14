@@ -245,15 +245,29 @@ public class PlatformIntegrationTests(ApiWebApplicationFactory factory) : ApiTes
     [Fact]
     public async Task Responses_CarrySecurityHeadersAndRequestId()
     {
+        var requestId = Guid.NewGuid().ToString();
         var client = Client();
-        client.DefaultRequestHeaders.Add("X-Request-Id", "trace-123");
+        client.DefaultRequestHeaders.Add("X-Request-Id", requestId);
 
         var response = await client.GetAsync($"/customers/{Guid.NewGuid()}");
 
         response.Headers.GetValues("X-Content-Type-Options").Should().Contain("nosniff");
         response.Headers.GetValues("X-Frame-Options").Should().Contain("DENY");
-        response.Headers.GetValues("X-Request-Id").Should().Contain("trace-123");
-        (await ReadAsync(response)).GetProperty("request_id").GetString().Should().Be("trace-123");
+        response.Headers.GetValues("X-Request-Id").Should().Contain(requestId);
+        (await ReadAsync(response)).GetProperty("request_id").GetString().Should().Be(requestId);
+    }
+
+    [Fact]
+    public async Task Responses_ReplaceNonUuidRequestIdWithGeneratedUuid()
+    {
+        var client = Client();
+        client.DefaultRequestHeaders.Add("X-Request-Id", "not-a-uuid");
+
+        var response = await client.GetAsync($"/customers/{Guid.NewGuid()}");
+
+        var echoed = response.Headers.GetValues("X-Request-Id").Single();
+        Guid.TryParse(echoed, out _).Should().BeTrue();
+        (await ReadAsync(response)).GetProperty("request_id").GetString().Should().Be(echoed);
     }
 
     [Fact]
