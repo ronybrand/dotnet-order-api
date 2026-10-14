@@ -50,6 +50,21 @@ public class OrderServiceTests
     // --- create ---
 
     [Fact]
+    public async Task CreateAsync_ExistingCustomer_MarksCustomerReferencedBeforeSavingTheOrder()
+    {
+        var customerId = Guid.NewGuid();
+        GivenCustomer(customerId);
+        var calls = new List<string>();
+        _customers.Setup(r => r.MarkReferenced(It.IsAny<Customer>())).Callback(() => calls.Add("mark"));
+        _orders.Setup(r => r.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>())).Callback(() => calls.Add("add"));
+
+        await _service.CreateAsync(new CreateOrderRequest(customerId, [Item()]));
+
+        // Touching the customer row in the same save is what makes a racing soft delete fail with a 409.
+        calls.Should().Equal("mark", "add");
+    }
+
+    [Fact]
     public async Task CreateAsync_ExistingCustomer_CreatesOpenOrderWithItemsAndTotal()
     {
         var customerId = Guid.NewGuid();

@@ -29,6 +29,57 @@ public class NotificationProcessorTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task ProcessAsync_RedeliveryOfAlreadySentMessage_AcksWithoutSendingAgain()
+    {
+        var payload = ValidPayload();
+
+        await _processor.ProcessAsync(payload, retryCount: 0, messageId: "msg-1");
+        var outcome = await _processor.ProcessAsync(payload, retryCount: 0, messageId: "msg-1");
+
+        outcome.Should().Be(ProcessingOutcome.Ack);
+        _sender.Verify(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_FailedSend_DoesNotMarkMessageAsSent()
+    {
+        _sender.SetupSequence(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("smtp down"))
+            .Returns(Task.CompletedTask);
+        var payload = ValidPayload();
+
+        (await _processor.ProcessAsync(payload, retryCount: 0, messageId: "msg-2")).Should().Be(ProcessingOutcome.Retry);
+        (await _processor.ProcessAsync(payload, retryCount: 1, messageId: "msg-2")).Should().Be(ProcessingOutcome.Ack);
+
+        _sender.Verify(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_MessageWithoutId_IsNeverDeduplicated()
+    {
+        var payload = ValidPayload();
+
+        await _processor.ProcessAsync(payload, retryCount: 0);
+        await _processor.ProcessAsync(payload, retryCount: 0);
+
+        _sender.Verify(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public void RecentMessageIds_AtCapacity_ForgetsTheOldestId()
+    {
+        var ids = new RecentMessageIds(capacity: 2);
+
+        ids.Add("a");
+        ids.Add("b");
+        ids.Add("c");
+
+        ids.Contains("a").Should().BeFalse();
+        ids.Contains("b").Should().BeTrue();
+        ids.Contains("c").Should().BeTrue();
+    }
+
     [Theory]
     [InlineData("not json")]
     [InlineData("{}")]

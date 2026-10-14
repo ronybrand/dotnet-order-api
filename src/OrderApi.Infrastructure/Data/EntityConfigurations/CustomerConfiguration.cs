@@ -19,6 +19,14 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.TaxId).IsRequired().HasMaxLength(20);
         builder.Property(c => c.PassportNumber).HasMaxLength(9);
         builder.Property(c => c.Email).IsRequired().HasMaxLength(FieldLimits.Email);
+
+        // Optimistic concurrency: Postgres system column xmin changes on every UPDATE of the row.
+        builder.Property(c => c.Version)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         builder.Property(c => c.CreatedBy).IsRequired().HasMaxLength(200);
         builder.Property(c => c.UpdatedBy).IsRequired().HasMaxLength(200);
         builder.Property(c => c.DeletedBy).HasMaxLength(200);

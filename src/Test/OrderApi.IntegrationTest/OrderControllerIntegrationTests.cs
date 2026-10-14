@@ -24,6 +24,23 @@ public class OrderControllerIntegrationTests(ApiWebApplicationFactory factory) :
     }
 
     [Fact]
+    public async Task CreateOrder_RacingWithCustomerDelete_NeverLeavesAnActiveOrderForADeletedCustomer()
+    {
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            var customerId = await CreateCustomerAsync();
+            var order = Post(Client(), "/orders", new { customer_id = customerId, items = new[] { new { description = "Pen", unit_price = 1m, quantity = 1 } } });
+            var delete = Admin().DeleteAsync($"/customers/{customerId}");
+
+            var responses = await Task.WhenAll(order, delete);
+
+            var orderCreated = responses[0].StatusCode == HttpStatusCode.Created;
+            var customerDeleted = responses[1].StatusCode == HttpStatusCode.NoContent;
+            (orderCreated && customerDeleted).Should().BeFalse("a deleted customer must never keep an active order (attempt {0})", attempt);
+        }
+    }
+
+    [Fact]
     public async Task Create_UnknownCustomer_Returns400()
     {
         var response = await Post(Client(), "/orders", new { customer_id = Guid.NewGuid(), items = Array.Empty<object>() });

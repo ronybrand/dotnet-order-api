@@ -21,10 +21,23 @@ public sealed class PermanentEmailException(string message, Exception? innerExce
 public sealed partial class NotificationProcessor(IEmailSender emailSender, ILogger<NotificationProcessor> logger)
 {
     public const int MaxRetries = 3;
+    private const int RememberedMessages = 10_000;
 
-    /// <summary>Decides what to do with a message; retryCount is how many times it was already retried.</summary>
-    public async Task<ProcessingOutcome> ProcessAsync(byte[] payload, int retryCount, CancellationToken cancellationToken = default)
+    private readonly RecentMessageIds _sent = new(RememberedMessages);
+
+    /// <summary>
+    /// Decides what to do with a message; retryCount is how many times it was already retried. A messageId already
+    /// delivered by e-mail is acknowledged without sending again (redelivery after a lost ack).
+    /// </summary>
+    public async Task<ProcessingOutcome> ProcessAsync(
+        byte[] payload, int retryCount, string? messageId = null, CancellationToken cancellationToken = default)
     {
+        if (messageId is not null && _sent.Contains(messageId))
+        {
+            LogDuplicate(logger, messageId);
+            return ProcessingOutcome.Ack;
+        }
+
         var statusChanged = OrderEventMessages.Deserialize(payload);
         if (statusChanged is null)
         {
@@ -37,6 +50,11 @@ public sealed partial class NotificationProcessor(IEmailSender emailSender, ILog
             await emailSender.SendAsync(statusChanged.CustomerEmail, OrderStatusEmailRenderer.Subject(statusChanged), OrderStatusEmailRenderer.Render(statusChanged), cancellationToken);
             // The customer e-mail is PII and is never logged: the order id is enough for tracing.
             LogSent(logger, statusChanged.OrderId, statusChanged.OldStatus, statusChanged.NewStatus);
+            if (messageId is not null)
+            {
+                _sent.Add(messageId);
+            }
+
             return ProcessingOutcome.Ack;
         }
         catch (PermanentEmailException ex)
@@ -56,6 +74,9 @@ public sealed partial class NotificationProcessor(IEmailSender emailSender, ILog
             return ProcessingOutcome.Retry;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Duplicate delivery of message_id={MessageId} ignored")]
+    private static partial void LogDuplicate(ILogger logger, string messageId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Malformed order status message, sending to DLQ")]
     private static partial void LogMalformed(ILogger logger);

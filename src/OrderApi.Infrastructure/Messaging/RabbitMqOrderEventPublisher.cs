@@ -49,7 +49,13 @@ public sealed partial class RabbitMqOrderEventPublisher(
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
             await RabbitMqTopology.DeclareAsync(channel, cancellationToken);
 
-            var properties = new BasicProperties { ContentType = "application/json", DeliveryMode = DeliveryModes.Persistent };
+            // The id travels with the message (and its retries) so the worker can recognise a redelivery.
+            var properties = new BasicProperties
+            {
+                ContentType = "application/json",
+                DeliveryMode = DeliveryModes.Persistent,
+                MessageId = Guid.NewGuid().ToString("D"),
+            };
             await channel.BasicPublishAsync(
                 exchange: string.Empty,
                 routingKey: OrderEventMessages.Queue,

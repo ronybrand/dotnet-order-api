@@ -64,7 +64,8 @@ public sealed partial class OrderStatusConsumer(
     {
         var retryCount = RetryCountOf(delivery.BasicProperties);
         var body = delivery.Body.ToArray();
-        var outcome = await processor.ProcessAsync(body, retryCount, cancellationToken);
+        var messageId = delivery.BasicProperties.MessageId;
+        var outcome = await processor.ProcessAsync(body, retryCount, messageId, cancellationToken);
 
         switch (outcome)
         {
@@ -77,6 +78,7 @@ public sealed partial class OrderStatusConsumer(
                 {
                     ContentType = "application/json",
                     DeliveryMode = DeliveryModes.Persistent,
+                    MessageId = messageId,
                     Headers = new Dictionary<string, object?> { [RetryHeader] = retryCount + 1 },
                 };
                 await channel.BasicPublishAsync(string.Empty, OrderEventMessages.Queue, false, properties, body, cancellationToken);
