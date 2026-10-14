@@ -15,6 +15,8 @@ internal static partial class CustomerRules
     [GeneratedRegex(@"^[A-Z0-9]{6,9}\z")]
     private static partial Regex PassportPattern();
 
+    private const int MinTaxIdSignificantChars = 5;
+
     public static void Apply<T>(
         AbstractValidator<T> validator,
         Expression<Func<T, string>> name,
@@ -24,7 +26,9 @@ internal static partial class CustomerRules
     {
         var getPassportNumber = passportNumber.Compile();
         validator.RuleFor(name).NotEmpty().MaximumLength(FieldLimits.CustomerName);
-        validator.RuleFor(taxId).NotEmpty().Matches(TaxIdPattern());
+        validator.RuleFor(taxId).NotEmpty().Matches(TaxIdPattern())
+            .Must(id => id is not null && id.Count(char.IsAsciiLetterOrDigit) >= MinTaxIdSignificantChars)
+            .WithMessage("'{PropertyName}' must contain at least " + MinTaxIdSignificantChars + " letters or digits.");
         validator.RuleFor(passportNumber).Matches(PassportPattern()).When(request => !string.IsNullOrEmpty(getPassportNumber(request)));
         validator.RuleFor(email).NotEmpty().MaximumLength(FieldLimits.Email).EmailAddress();
     }

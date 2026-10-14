@@ -17,7 +17,7 @@ public sealed class ItemRequestValidator : AbstractValidator<ItemRequest>
             .LessThanOrEqualTo(FieldLimits.MaxUnitPrice)
             .Must(price => decimal.Round(price, 2) == price)
             .WithMessage("'{PropertyName}' must have at most 2 decimal places.");
-        RuleFor(i => i.Quantity).GreaterThan(0);
+        RuleFor(i => i.Quantity).InclusiveBetween(1, FieldLimits.MaxQuantity);
     }
 }
 
@@ -39,5 +39,5 @@ public sealed class CreateOrderRequestValidator : AbstractValidator<CreateOrderR
 
 public sealed class UpdateItemQuantityRequestValidator : AbstractValidator<UpdateItemQuantityRequest>
 {
-    public UpdateItemQuantityRequestValidator() => RuleFor(r => r.Quantity).GreaterThan(0);
+    public UpdateItemQuantityRequestValidator() => RuleFor(r => r.Quantity).InclusiveBetween(1, FieldLimits.MaxQuantity);
 }

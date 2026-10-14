@@ -65,6 +65,18 @@ public class GlobalExceptionHandlerMiddlewareTests
         body.GetProperty("code").GetString().Should().Be(ErrorCodes.ConflictConcurrentModification);
     }
 
+    [Theory]
+    [InlineData(413, "Request body too large")]
+    [InlineData(400, "Invalid request")]
+    public async Task InvokeAsync_BadHttpRequest_KeepsClientErrorStatusInsteadOf500(int statusCode, string message)
+    {
+        var (status, body) = await Run(new BadHttpRequestException("kestrel detail", statusCode));
+
+        status.Should().Be(statusCode);
+        body.GetProperty("message").GetString().Should().Be(message);
+        body.GetProperty("code").GetString().Should().Be(ErrorCodes.ValidationRequest);
+    }
+
     [Fact]
     public async Task InvokeAsync_UnexpectedException_Returns500WithoutLeakingDetails()
     {

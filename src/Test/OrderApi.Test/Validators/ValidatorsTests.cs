@@ -6,6 +6,7 @@ using OrderApi.Domain.Common.Search;
 using OrderApi.Application.DTOs;
 using OrderApi.Application.Services;
 using OrderApi.Application.Validators;
+using OrderApi.Domain.Common;
 
 namespace OrderApi.Test.Validators;
 
@@ -35,6 +36,12 @@ public class CustomerValidatorsTests
     [InlineData("abc def")]
     [InlineData("")]
     public void Create_InvalidTaxId_Fails(string taxId) =>
+        _create.TestValidate(Valid() with { TaxId = taxId }).ShouldHaveValidationErrorFor(r => r.TaxId);
+
+    [Theory]
+    [InlineData(".....")]
+    [InlineData("A.B-C")]
+    public void Create_TaxIdWithFewerThanFiveAlphanumerics_Fails(string taxId) =>
         _create.TestValidate(Valid() with { TaxId = taxId }).ShouldHaveValidationErrorFor(r => r.TaxId);
 
     // .NET's "$" also matches before a trailing newline, which would let "12345678\n" slip past the
@@ -180,6 +187,18 @@ public class OrderValidatorsTests
     [InlineData(-1)]
     public void UpdateQuantity_NonPositive_Fails(int quantity) =>
         _quantity.TestValidate(new UpdateItemQuantityRequest(quantity)).ShouldHaveValidationErrorFor(r => r.Quantity);
+
+    [Fact]
+    public void Item_QuantityAboveLimit_Fails() =>
+        _item.TestValidate(ValidItem() with { Quantity = FieldLimits.MaxQuantity + 1 }).ShouldHaveValidationErrorFor(i => i.Quantity);
+
+    [Fact]
+    public void Item_QuantityAtLimit_IsValid() =>
+        _item.TestValidate(ValidItem() with { Quantity = FieldLimits.MaxQuantity }).ShouldNotHaveAnyValidationErrors();
+
+    [Fact]
+    public void UpdateQuantity_AboveLimit_Fails() =>
+        _quantity.TestValidate(new UpdateItemQuantityRequest(FieldLimits.MaxQuantity + 1)).ShouldHaveValidationErrorFor(r => r.Quantity);
 
     [Fact]
     public void UpdateQuantity_Positive_IsValid() =>
