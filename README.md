@@ -19,18 +19,39 @@ src/
   OrderApi.Infrastructure  EF Core (DbContext, migrations, repositories), search engine, RabbitMQ publisher
   OrderApi.Api             controllers, middleware, JWT auth, rate limiting, Program.cs
   OrderApi.Worker          RabbitMQ consumer that sends the status e-mails (SMTP)
-  Test/OrderApi.Test             unit tests (no Docker)
+  Test/OrderApi.Test             unit tests and database-less HTTP contract tests (no Docker)
+  Test/OrderApi.TestSupport      shared test helpers (RS256 token factory, including malicious variants)
   Test/OrderApi.IntegrationTest  HTTP tests against real Postgres (Testcontainers, needs Docker)
 ```
 
-**Request flow (synchronous):** `CorrelationId` -> `SecurityHeaders` -> `GlobalExceptionHandler` -> CORS ->
-authentication (JWT RS256) -> rate limiter -> authorization -> `ValidationFilter` -> controller -> service ->
-repository -> PostgreSQL.
+## Request and notification flow
 
-**Notification flow (asynchronous):** `confirm`/`cancel` commit the status change, then publish an
-`OrderStatusChangedEvent` to the `order.status.changed` RabbitMQ queue. `OrderApi.Worker` consumes it and
-sends an HTML e-mail via SMTP (Mailpit in dev), retrying 3 times with a 2s backoff before routing to
-`order.status.changed.dlq`.
+**Order create/update (synchronous)**
+
+```mermaid
+flowchart LR
+    Client -->|HTTPS| Pre["CorrelationId / SecurityHeaders<br/>/ ExceptionHandler / CORS"] --> JWT["JWT RS256<br/>(aud, iss, sub)"] --> RateLimit["Rate limiter<br/>(per subject)"] --> Authz[Authorization] --> Filter[ValidationFilter] --> Controller --> Service --> Repository["EF Core repository"] --> DB[(PostgreSQL)]
+```
+
+`OrderService.ConfirmAsync` / `CancelAsync` publish the status change event after the commit:
+
+**Notification (asynchronous)**
+
+```mermaid
+flowchart LR
+    Event[OrderStatusChangedEvent] --> Publisher[RabbitMqOrderEventPublisher] -->|publish| Queue[[RabbitMQ order.status.changed]] -->|consume| Worker[OrderApi.Worker] --> Email["MailKit (SMTP)"] --> Customer([Customer inbox])
+    Worker -.->|3 retries, then DLQ| Queue
+```
+
+The middlewares run first (correlation id, security headers, exception handler, CORS), then authentication
+validates the RS256 token (audience, issuer, lifetime and a mandatory `sub`), the rate limiter partitions by
+subject and authorization checks the role. A `ValidationFilter` runs the FluentValidation validators of every action
+argument before the controller, which only delegates to the service. Creating or updating an order returns `201`
+for create and `200` for the update-style endpoints (`204` for delete). A status change from `confirm` or `cancel`
+(not every update, and only if the customer has an e-mail) publishes to RabbitMQ after the database commit: a
+publish failure is only logged and never reaches the HTTP response. A separate `OrderApi.Worker` process consumes the
+queue and sends the e-mail through SMTP, retrying 3 times with a 2s backoff before nacking to the dead-letter queue.
+The two paths never block each other.
 
 ## Domain
 
@@ -89,7 +110,7 @@ Every error has the shape `{ "message", "code", "params", "request_id" }`.
 
 | Code | HTTP | Meaning |
 |---|---|---|
-| `VALIDATION-01` | 400 | invalid request body |
+| `VALIDATION-01` | 400 | invalid request body, malformed JSON, unknown field or a malformed id in the route |
 | `VALIDATION-02` | 400 | order not editable in its status |
 | `VALIDATION-03` | 400 | confirming an order with no items |
 | `VALIDATION-04` | 400 | invalid status transition when confirming |
