@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using FluentValidation.TestHelper;
 using OrderApi.Application.DTOs;
 using OrderApi.Application.Services;

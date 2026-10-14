@@ -27,6 +27,9 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 - Migração para .NET 10 e para as versões estáveis mais novas das dependências (RabbitMQ.Client 7,
   Swashbuckle 10, Testcontainers 4).
 
+- `FluentAssertions` substituído por `AwesomeAssertions` (fork com licença Apache 2.0): a partir da versão 8 o
+  FluentAssertions passou a ter licença comercial.
+
 ### Fixed
 
 - Testes de integração aplicam as migrations antes do primeiro `TRUNCATE` (o host é iniciado na

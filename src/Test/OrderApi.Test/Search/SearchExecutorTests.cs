@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using OrderApi.Domain.Common.Search;
 using OrderApi.Domain.Entities;

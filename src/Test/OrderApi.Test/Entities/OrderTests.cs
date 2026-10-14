@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using OrderApi.Domain.Entities;
 
 namespace OrderApi.Test.Entities;

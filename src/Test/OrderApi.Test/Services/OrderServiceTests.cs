@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using OrderApi.Application.Common;
 using OrderApi.Application.DTOs;
