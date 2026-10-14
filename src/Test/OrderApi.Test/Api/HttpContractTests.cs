@@ -338,11 +338,24 @@ public class RateLimitContractTests(HostlessApiFactory factory)
     [Fact]
     public async Task Health_IsNotRateLimited()
     {
+        // The database is unreachable here, so an admitted probe hangs on the health check while a
+        // rejected one answers 429 immediately: fire more probes than the global limit at once and
+        // inspect only the ones that answered within the timeout.
         var client = factory.CreateClient();
-        for (var i = 0; i < 105; i++)
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var probes = Enumerable.Range(0, 105).Select(async _ =>
         {
-            (await client.GetAsync("/health")).StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
-        }
+            try
+            {
+                return (HttpStatusCode?)(await client.GetAsync("/health", timeout.Token)).StatusCode;
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+        });
+
+        (await Task.WhenAll(probes)).Should().NotContain(HttpStatusCode.TooManyRequests);
     }
 
     [Fact]
