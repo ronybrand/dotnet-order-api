@@ -30,6 +30,9 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 - `FluentAssertions` substituído por `AwesomeAssertions` (fork com licença Apache 2.0): a partir da versão 8 o
   FluentAssertions passou a ter licença comercial.
 
+- Actions dos workflows fixadas pelo SHA do commit (versão no comentário `# vN`), como no `fastapi-order-api`;
+  o Dependabot continua atualizando os SHAs.
+
 ### Fixed
 
 - `X-Request-Id` só é aceito se for um UUID canônico; qualquer outro valor é descartado e substituído por um
