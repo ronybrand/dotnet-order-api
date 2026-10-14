@@ -1,8 +1,13 @@
 # dotnet-order-api
 
+[![CI](https://github.com/ronybrand/dotnet-order-api/actions/workflows/ci.yml/badge.svg)](https://github.com/ronybrand/dotnet-order-api/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ronybrand/dotnet-order-api/actions/workflows/codeql.yml/badge.svg)](https://github.com/ronybrand/dotnet-order-api/actions/workflows/codeql.yml)
+
+[API docs](https://ronybrand.github.io/dotnet-order-api)
+
 Order Management API in ASP.NET Core (.NET 10) with EF Core and PostgreSQL. It implements the same domain
 as `fastapi-order-api` (the specification source: customers, orders, items, status transitions and the
-notification flow), following the Clean Architecture conventions of the `dotnet-feature` guidelines
+notification flow; see [`DOMAIN.md`](./DOMAIN.md)), following the Clean Architecture conventions of the `dotnet-feature` guidelines
 summarized in [`AGENTS.md`](./AGENTS.md).
 
 ## Architecture
@@ -127,6 +132,10 @@ New migration: `dotnet ef migrations add <Name> --project src/OrderApi.Infrastru
 then review it by hand. Warning: for the `xmin` concurrency token EF generates a real `xmin` column in
 `CreateTable`; it must be removed from the migration because it is a Postgres system column.
 
+## Architecture decisions
+
+Non-obvious technical decisions (and the alternatives considered) are logged in [`docs/adr/`](./docs/adr/README.md).
+
 ## Tests and quality
 
 ```bash
@@ -134,7 +143,14 @@ dotnet test src/Test/OrderApi.Test                  # unit, no Docker
 dotnet test src/Test/OrderApi.IntegrationTest       # Testcontainers, needs Docker
 dotnet format --verify-no-changes
 dotnet build -warnaserror                           # analyzers are warnings-as-errors (Directory.Build.props)
+make verify                                         # single local gate: format, build, unit + integration, coverage >= 80%
 ```
+
+`make verify` reproduces the CI quality gates in one command. Coverage is measured over the unit and integration
+suites merged (controllers, middleware and repositories are only exercised by the integration tests); the worker's
+broker and SMTP glue needs real infrastructure and is excluded. CI also checks migration drift
+(`dotnet ef migrations has-pending-model-changes`), builds both Docker images (pushed to GHCR from `main`) and
+publishes an OpenAPI snapshot (`scripts/export-openapi.sh`) as a Redoc page.
 
 Integration tests use real RS256 tokens signed with a throwaway key. The only host difference from production
 is an in-memory `IOrderEventPublisher` (no broker); rate limiting, CORS, security headers and body limits stay

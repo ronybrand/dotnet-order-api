@@ -54,7 +54,7 @@ fail-fast guard, Swagger only in Development, no secrets in source or migrations
 
 ## Definition of done
 
-- `dotnet format --verify-no-changes` and `dotnet build` (warnings are errors) are clean; every suppression is
+- `make verify` (format, build with warnings as errors, unit and integration tests, coverage gate) is clean; every suppression is
   documented.
 - `dotnet test src/Test/OrderApi.Test` was run; integration tests were run when Docker is available. Rule out
   Docker/Testcontainers problems before concluding that the implementation is wrong.
