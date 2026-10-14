@@ -7,8 +7,7 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 
 ### Fixed
 
-- Regex de `tax_id`/`passport_number` usa `\z` em vez de `$`: `"12345678
-"` passava na validação e
+- Regex de `tax_id`/`passport_number` usa `\z` em vez de `$`: `"12345678\n"` passava na validação e
   burlava o índice único.
 - `POST /orders/{id}/items` agora respeita `MaxItemsPerOrder`, antes só aplicado na criação.
 - Filtros de busca limitam o tamanho de cada valor (`MaxValueLength`), incluindo o termo de `lk`.

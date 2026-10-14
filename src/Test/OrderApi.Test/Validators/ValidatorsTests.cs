@@ -37,18 +37,15 @@ public class CustomerValidatorsTests
     public void Create_InvalidTaxId_Fails(string taxId) =>
         _create.TestValidate(Valid() with { TaxId = taxId }).ShouldHaveValidationErrorFor(r => r.TaxId);
 
-    // .NET's "$" also matches before a trailing newline, which would let "12345678
-" slip past the
+    // .NET's "$" also matches before a trailing newline, which would let "12345678\n" slip past the
     // unique index as a different value from "12345678".
     [Fact]
     public void Create_TaxIdWithTrailingNewline_Fails() =>
-        _create.TestValidate(Valid() with { TaxId = "12345678
-" }).ShouldHaveValidationErrorFor(r => r.TaxId);
+        _create.TestValidate(Valid() with { TaxId = "12345678\n" }).ShouldHaveValidationErrorFor(r => r.TaxId);
 
     [Fact]
     public void Create_PassportWithTrailingNewline_Fails() =>
-        _create.TestValidate(Valid() with { PassportNumber = "AB123456
-" }).ShouldHaveValidationErrorFor(r => r.PassportNumber);
+        _create.TestValidate(Valid() with { PassportNumber = "AB123456\n" }).ShouldHaveValidationErrorFor(r => r.PassportNumber);
 
     [Theory]
     [InlineData("ab123456")]
