@@ -50,7 +50,7 @@ public class CustomersController(ICustomerService customers) : ControllerBase
     /// <summary>Retrieves a customer by id.</summary>
     /// <response code="200">The customer.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-01.</response>
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id}")]
     [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken) =>
@@ -61,7 +61,7 @@ public class CustomersController(ICustomerService customers) : ControllerBase
     /// <response code="400">VALIDATION-01 invalid request body.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-01.</response>
     /// <response code="409">CONFLICT-01 / CONFLICT-02.</response>
-    [HttpPut("{id:guid}")]
+    [HttpPut("{id}")]
     [Authorize(Roles = Roles.Admin)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
@@ -75,7 +75,7 @@ public class CustomersController(ICustomerService customers) : ControllerBase
     /// <response code="204">Customer deleted.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-01.</response>
     /// <response code="409">CONFLICT-03 customer has orders.</response>
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{id}")]
     [Authorize(Roles = Roles.Admin)]
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

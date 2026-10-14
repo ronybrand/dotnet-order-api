@@ -44,7 +44,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <summary>Retrieves an order by id, including items and calculated total.</summary>
     /// <response code="200">The order.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id}")]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken) =>
@@ -53,7 +53,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <summary>Soft-deletes an order.</summary>
     /// <response code="204">Order deleted.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
@@ -67,7 +67,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="400">VALIDATION-01 / VALIDATION-02 order is not editable.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
-    [HttpPost("{id:guid}/items")]
+    [HttpPost("{id}/items")]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -80,7 +80,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="400">VALIDATION-01 / VALIDATION-02 order is not editable.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02 order / RESOURCE-NOT-FOUND-03 item.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
-    [HttpPatch("{orderId:guid}/items/{itemId:guid}")]
+    [HttpPatch("{orderId}/items/{itemId}")]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -94,7 +94,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="400">VALIDATION-02 order is not editable.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02 order / RESOURCE-NOT-FOUND-03 item.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
-    [HttpDelete("{orderId:guid}/items/{itemId:guid}")]
+    [HttpDelete("{orderId}/items/{itemId}")]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -107,7 +107,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="400">VALIDATION-03 empty order / VALIDATION-04 invalid transition.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
-    [HttpPost("{id:guid}/confirm")]
+    [HttpPost("{id}/confirm")]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -120,7 +120,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="400">VALIDATION-08 already canceled.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
-    [HttpPost("{id:guid}/cancel")]
+    [HttpPost("{id}/cancel")]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
