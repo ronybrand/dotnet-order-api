@@ -5,6 +5,12 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 
 ## [Unreleased]
 
+### Security
+
+- RabbitMQ sem credencial padrão `guest/guest` e com TLS obrigatório (`RabbitMq:UseTls`); SMTP exige STARTTLS e
+  nunca envia credenciais em texto claro. Validação no startup; `AllowInsecure` só em `appsettings.Development.json`.
+- Auto-merge do Dependabot restrito a atualizações patch.
+
 ### Fixed
 
 - Regex de `tax_id`/`passport_number` usa `\z` em vez de `$`: `"12345678\n"` passava na validação e

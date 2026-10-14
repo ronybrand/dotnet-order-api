@@ -1,5 +1,8 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
@@ -19,6 +22,34 @@ public sealed class SmtpOptions
 
     public string? UserName { get; set; }
     public string? Password { get; set; }
+
+    /// <summary>Plain SMTP for local development only (set in appsettings.Development.json).</summary>
+    public bool AllowInsecure { get; set; }
+}
+
+public sealed class SmtpOptionsValidator : IValidateOptions<SmtpOptions>
+{
+    public ValidateOptionsResult Validate(string? name, SmtpOptions options)
+    {
+        if (!options.UseStartTls && !options.AllowInsecure)
+        {
+            return ValidateOptionsResult.Fail("Smtp:UseStartTls must be true (Smtp:AllowInsecure is for local development only)");
+        }
+
+        return !options.UseStartTls && !string.IsNullOrWhiteSpace(options.UserName)
+            ? ValidateOptionsResult.Fail("Smtp:UserName requires Smtp:UseStartTls: credentials are never sent in clear text")
+            : ValidateOptionsResult.Success;
+    }
+}
+
+public static class SmtpOptionsExtensions
+{
+    public static IServiceCollection AddSmtpOptions(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<SmtpOptions>().Bind(configuration.GetSection(SmtpOptions.SectionName)).ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<SmtpOptions>, SmtpOptionsValidator>());
+        return services;
+    }
 }
 
 public sealed class MailKitEmailSender(IOptions<SmtpOptions> options) : IEmailSender

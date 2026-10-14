@@ -26,6 +26,9 @@ public sealed class HostlessApiFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Jwt__Audience", TestTokens.Audience);
         Environment.SetEnvironmentVariable("Jwt__Issuer", TestTokens.Issuer);
         Environment.SetEnvironmentVariable("Cors__AllowedOrigins", "https://app.example.com");
+        Environment.SetEnvironmentVariable("RabbitMq__UserName", "test");
+        Environment.SetEnvironmentVariable("RabbitMq__Password", "test");
+        Environment.SetEnvironmentVariable("RabbitMq__AllowInsecure", "true");
         Environment.SetEnvironmentVariable("Database__MigrateOnStartup", "false");
     }
 

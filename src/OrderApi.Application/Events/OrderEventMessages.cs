@@ -50,7 +50,15 @@ public sealed class RabbitMqOptions
 
     public string Host { get; set; } = "localhost";
     public int Port { get; set; } = 5672;
-    public string UserName { get; set; } = "guest";
-    public string Password { get; set; } = "guest";
+
+    // No credential defaults: a deployment that forgets them must fail at startup, not fall back to guest/guest.
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
     public string VirtualHost { get; set; } = "/";
+
+    /// <summary>The queue carries customer e-mail and name, so the broker connection is TLS unless AllowInsecure.</summary>
+    public bool UseTls { get; set; }
+
+    /// <summary>Plain-text broker connection for local development only (set in appsettings.Development.json).</summary>
+    public bool AllowInsecure { get; set; }
 }
