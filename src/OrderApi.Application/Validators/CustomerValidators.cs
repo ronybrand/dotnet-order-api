@@ -8,10 +8,11 @@ namespace OrderApi.Application.Validators;
 
 internal static partial class CustomerRules
 {
-    [GeneratedRegex("^[A-Za-z0-9./-]{5,20}$")]
+    // \z, not $: in .NET "$" also matches before a trailing newline.
+    [GeneratedRegex(@"^[A-Za-z0-9./-]{5,20}\z")]
     private static partial Regex TaxIdPattern();
 
-    [GeneratedRegex("^[A-Z0-9]{6,9}$")]
+    [GeneratedRegex(@"^[A-Z0-9]{6,9}\z")]
     private static partial Regex PassportPattern();
 
     public static void Apply<T>(
