@@ -9,4 +9,4 @@ verify:
 	dotnet format --verify-no-changes
 	dotnet build -c Release -warnaserror
 	dotnet test src/Test/OrderApi.Test -c Release --no-build -p:CollectCoverage=true -p:CoverletOutput=../../../coverage/unit -p:CoverletOutputFormat=json
-	dotnet test src/Test/OrderApi.IntegrationTest -c Release --no-build -p:CollectCoverage=true -p:CoverletOutput=../../../coverage/merged -p:CoverletOutputFormat=json -p:MergeWith=$(CURDIR)/coverage/unit.json -p:Threshold=$(COVERAGE_MIN)
+	dotnet test src/Test/OrderApi.IntegrationTest -c Release --no-build -p:CollectCoverage=true -p:CoverletOutput=../../../coverage/merged -p:CoverletOutputFormat=json -p:MergeWith=$(CURDIR)/coverage/unit.json -p:Threshold=$(COVERAGE_MIN) -p:ThresholdStat=total

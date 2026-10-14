@@ -3,7 +3,7 @@
 [![CI](https://github.com/ronybrand/dotnet-order-api/actions/workflows/ci.yml/badge.svg)](https://github.com/ronybrand/dotnet-order-api/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/ronybrand/dotnet-order-api/actions/workflows/codeql.yml/badge.svg)](https://github.com/ronybrand/dotnet-order-api/actions/workflows/codeql.yml)
 
-[API docs](https://ronybrand.github.io/dotnet-order-api)
+API docs: published to GitHub Pages when `ENABLE_PAGES=true` (see "Tests and quality").
 
 Order Management API in ASP.NET Core (.NET 10) with EF Core and PostgreSQL. It implements the same domain
 as `fastapi-order-api` (the specification source: customers, orders, items, status transitions and the
@@ -150,7 +150,8 @@ make verify                                         # single local gate: format,
 suites merged (controllers, middleware and repositories are only exercised by the integration tests); the worker's
 broker and SMTP glue needs real infrastructure and is excluded. CI also checks migration drift
 (`dotnet ef migrations has-pending-model-changes`), builds both Docker images (pushed to GHCR from `main`) and
-publishes an OpenAPI snapshot (`scripts/export-openapi.sh`) as a Redoc page.
+builds an OpenAPI snapshot (`scripts/export-openapi.sh`) and, only when the repository variable `ENABLE_PAGES=true`
+is set and Pages is enabled, publishes it as a Redoc page.
 
 Integration tests use real RS256 tokens signed with a throwaway key. The only host difference from production
 is an in-memory `IOrderEventPublisher` (no broker); rate limiting, CORS, security headers and body limits stay
