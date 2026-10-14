@@ -332,6 +332,46 @@ public class ResponseShapeTests
     }
 }
 
+[Collection(HostlessApiCollection.Name)]
+public class RateLimitContractTests(HostlessApiFactory factory)
+{
+    [Fact]
+    public async Task Health_IsNotRateLimited()
+    {
+        // The database is unreachable here, so an admitted probe hangs on the health check while a
+        // rejected one answers 429 immediately: fire more probes than the global limit at once and
+        // inspect only the ones that answered within the timeout.
+        var client = factory.CreateClient();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var probes = Enumerable.Range(0, 105).Select(async _ =>
+        {
+            try
+            {
+                return (HttpStatusCode?)(await client.GetAsync("/health", timeout.Token)).StatusCode;
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+        });
+
+        (await Task.WhenAll(probes)).Should().NotContain(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task OrderWrites_ExceedingPerRouteLimit_Return429()
+    {
+        var client = factory.ClientFor(subject: $"order-writer-{Guid.NewGuid():N}");
+        HttpResponseMessage? last = null;
+        for (var i = 0; i <= 30; i++)
+        {
+            last = await client.PostAsJsonAsync("/orders", new { });
+        }
+
+        last!.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
+}
+
 internal static class ContractJson
 {
     public static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };

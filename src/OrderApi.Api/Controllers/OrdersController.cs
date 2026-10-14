@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OrderApi.Api.Extensions;
 using OrderApi.Application.DTOs;
 using OrderApi.Application.Services.Interfaces;
@@ -17,6 +18,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="201">Order created.</response>
     /// <response code="400">VALIDATION-01 invalid body / VALIDATION-07 customer not found.</response>
     [HttpPost]
+    [EnableRateLimiting(RateLimitingExtensions.OrderWritePolicy)]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
@@ -54,6 +56,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="204">Order deleted.</response>
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
     [HttpDelete("{id}")]
+    [EnableRateLimiting(RateLimitingExtensions.OrderWritePolicy)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
@@ -68,6 +71,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
     [HttpPost("{id}/items")]
+    [EnableRateLimiting(RateLimitingExtensions.OrderWritePolicy)]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -81,6 +85,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="404">RESOURCE-NOT-FOUND-02 order / RESOURCE-NOT-FOUND-03 item.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
     [HttpPatch("{orderId}/items/{itemId}")]
+    [EnableRateLimiting(RateLimitingExtensions.OrderWritePolicy)]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -95,6 +100,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="404">RESOURCE-NOT-FOUND-02 order / RESOURCE-NOT-FOUND-03 item.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
     [HttpDelete("{orderId}/items/{itemId}")]
+    [EnableRateLimiting(RateLimitingExtensions.OrderWritePolicy)]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -108,6 +114,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
     [HttpPost("{id}/confirm")]
+    [EnableRateLimiting(RateLimitingExtensions.OrderWritePolicy)]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -121,6 +128,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
     /// <response code="404">RESOURCE-NOT-FOUND-02.</response>
     /// <response code="409">CONFLICT-00 concurrent modification.</response>
     [HttpPost("{id}/cancel")]
+    [EnableRateLimiting(RateLimitingExtensions.OrderWritePolicy)]
     [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]

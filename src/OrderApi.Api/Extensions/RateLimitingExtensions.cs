@@ -9,19 +9,29 @@ namespace OrderApi.Api.Extensions;
 public static class RateLimitingExtensions
 {
     public const string WritePolicy = "customer-write";
+    public const string OrderWritePolicy = "order-write";
 
     private const int GlobalPermitLimit = 100;
 
     // Stricter than the global default: customer writes touch PII and are costlier than reads.
     private const int WritePermitLimit = 10;
 
+    // Every order transition opens a broker connection to publish the notification, so order
+    // writes get their own ceiling, looser than customer writes but well under the global one.
+    private const int OrderWritePermitLimit = 30;
+
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services) =>
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            // The health probe must never be starved by traffic sharing its partition (anonymous callers
+            // behind a proxy share one address), otherwise the orchestrator would restart a healthy pod.
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
-                context => Window(context, "global", GlobalPermitLimit));
+                context => context.Request.Path.StartsWithSegments("/health")
+                    ? RateLimitPartition.GetNoLimiter("health")
+                    : Window(context, "global", GlobalPermitLimit));
             options.AddPolicy(WritePolicy, context => Window(context, WritePolicy, WritePermitLimit));
+            options.AddPolicy(OrderWritePolicy, context => Window(context, OrderWritePolicy, OrderWritePermitLimit));
             options.OnRejected = async (context, cancellationToken) =>
             {
                 context.HttpContext.Response.ContentType = "application/json";

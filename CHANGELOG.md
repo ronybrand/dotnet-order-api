@@ -5,6 +5,13 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 
 ## [Unreleased]
 
+### Security
+
+- `/health` fora do rate limit global e política `order-write` (30/min) nas escritas de `/orders`.
+- `X-Forwarded-For` aceito apenas dos proxies em `ForwardedHeaders:KnownProxies`, para o rate limit
+  particionar por cliente real atrás de proxy.
+- `docker-compose` publica a API só em `127.0.0.1`; workflows com `permissions: contents: read`.
+
 ### Fixed
 
 - Regex de `tax_id`/`passport_number` usa `\z` em vez de `$`: `"12345678\n"` passava na validação e
