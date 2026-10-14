@@ -1,0 +1,10 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- coverlet.msbuild: only measure production code (the worker broker/SMTP glue needs real infrastructure and is excluded, like worker.py in the Python project); generated EF migrations are not worth testing. -->
+  <PropertyGroup>
+    <Exclude>[OrderApi.Test]*,[OrderApi.IntegrationTest]*,[OrderApi.Worker]OrderApi.Worker.OrderStatusConsumer,[OrderApi.Worker]OrderApi.Worker.MailKitEmailSender,[OrderApi.Worker]Program</Exclude>
+    <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
+    <ThresholdType>line</ThresholdType>
+  </PropertyGroup>
+</Project>

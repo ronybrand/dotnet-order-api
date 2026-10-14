@@ -486,3 +486,6 @@ $RECYCLE.BIN/
 *.user
 
 keys/
+
+coverage/
+dist-openapi/
