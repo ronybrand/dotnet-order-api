@@ -1,5 +1,8 @@
 using AwesomeAssertions;
+using System.Text.Json;
 using FluentValidation.TestHelper;
+using OrderApi.Api.Extensions;
+using OrderApi.Domain.Common.Search;
 using OrderApi.Application.DTOs;
 using OrderApi.Application.Services;
 using OrderApi.Application.Validators;
@@ -97,6 +100,10 @@ public class OrderValidatorsTests
         _create.TestValidate(new CreateOrderRequest(Guid.NewGuid(), null)).ShouldNotHaveAnyValidationErrors();
 
     [Fact]
+    public void CreateOrder_NullItemElement_Fails() =>
+        _create.TestValidate(new CreateOrderRequest(Guid.NewGuid(), [ValidItem(), null!])).ShouldHaveValidationErrorFor(r => r.Items);
+
+    [Fact]
     public void CreateOrder_EmptyCustomerId_Fails() =>
         _create.TestValidate(new CreateOrderRequest(Guid.Empty, [])).ShouldHaveValidationErrorFor(r => r.CustomerId);
 
@@ -190,4 +197,75 @@ public class SearchRequestValidatorTests
     [Fact]
     public void MaxSize_IsValid() =>
         _validator.TestValidate(new OrderApi.Domain.Common.Search.SearchRequest(Size: 100)).ShouldNotHaveAnyValidationErrors();
+
+    private static SearchRequest WithFilters(IReadOnlyDictionary<string, IReadOnlyList<FilterCondition>> filters) => new(Filters: filters);
+
+    private static Dictionary<string, IReadOnlyList<FilterCondition>> OneFilter(params FilterCondition[] conditions) =>
+        new Dictionary<string, IReadOnlyList<FilterCondition>> { ["name"] = conditions };
+
+    [Fact]
+    public void PageTimesSizeOverflowingInt_Fails() =>
+        _validator.TestValidate(new SearchRequest(Page: int.MaxValue, Size: 100)).ShouldHaveValidationErrorFor(r => r.Page);
+
+    [Fact]
+    public void LargestPageThatFitsAnInt_IsValid() =>
+        _validator.TestValidate(new SearchRequest(Page: 21_474_836, Size: 100)).ShouldNotHaveAnyValidationErrors();
+
+    [Fact]
+    public void NullConditionList_Fails() =>
+        _validator.TestValidate(WithFilters(new Dictionary<string, IReadOnlyList<FilterCondition>> { ["name"] = null! }))
+            .ShouldHaveValidationErrorFor(r => r.Filters);
+
+    [Fact]
+    public void NullCondition_Fails() =>
+        _validator.TestValidate(WithFilters(OneFilter(null!))).ShouldHaveValidationErrorFor(r => r.Filters);
+
+    [Fact]
+    public void NullOperator_Fails() =>
+        _validator.TestValidate(WithFilters(OneFilter(new FilterCondition(null!, "x")))).ShouldHaveValidationErrorFor(r => r.Filters);
+
+    [Fact]
+    public void TooManyFilterFields_Fails()
+    {
+        var filters = Enumerable.Range(0, SearchRequestValidator.MaxFilterFields + 1)
+            .ToDictionary(n => $"field{n}", _ => (IReadOnlyList<FilterCondition>)[new FilterCondition()]);
+
+        _validator.TestValidate(WithFilters(filters)).ShouldHaveValidationErrorFor(r => r.Filters);
+    }
+
+    [Fact]
+    public void TooManyConditionsPerField_Fails()
+    {
+        var conditions = Enumerable.Repeat(new FilterCondition(), SearchRequestValidator.MaxConditionsPerField + 1).ToArray();
+
+        _validator.TestValidate(WithFilters(OneFilter(conditions))).ShouldHaveValidationErrorFor(r => r.Filters);
+    }
+
+    [Fact]
+    public void InListAboveLimit_Fails()
+    {
+        var values = JsonSerializer.SerializeToElement(Enumerable.Range(0, SearchRequestValidator.MaxInValues + 1));
+
+        _validator.TestValidate(WithFilters(OneFilter(new FilterCondition("in", values)))).ShouldHaveValidationErrorFor(r => r.Filters);
+    }
+
+    [Fact]
+    public void InListAtLimit_IsValid()
+    {
+        var values = JsonSerializer.SerializeToElement(Enumerable.Range(0, SearchRequestValidator.MaxInValues));
+
+        _validator.TestValidate(WithFilters(OneFilter(new FilterCondition("in", values)))).ShouldNotHaveAnyValidationErrors();
+    }
+}
+
+public class SearchQueryValidatorTests
+{
+    private readonly SearchQueryValidator _validator = new();
+
+    [Fact]
+    public void PageTimesSizeOverflowingInt_Fails() =>
+        _validator.TestValidate(new SearchQuery(Page: int.MaxValue, Size: 100)).ShouldHaveValidationErrorFor(q => q.Page);
+
+    [Fact]
+    public void Defaults_AreValid() => _validator.TestValidate(new SearchQuery()).ShouldNotHaveAnyValidationErrors();
 }
