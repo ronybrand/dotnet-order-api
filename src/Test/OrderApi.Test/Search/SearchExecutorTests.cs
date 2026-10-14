@@ -10,6 +10,9 @@ namespace OrderApi.Test.Search;
 
 public class SearchExecutorTests : IDisposable
 {
+    private static readonly string[] InFilterValues = ["Alice", "Diego"];
+    private static readonly string[] BetweenBounds = ["2025-01-02T00:00:00+00:00", "2025-01-03T00:00:00+00:00"];
+
     private readonly AppDbContext _db;
 
     public SearchExecutorTests()
@@ -29,7 +32,11 @@ public class SearchExecutorTests : IDisposable
         _db.SaveChanges();
     }
 
-    public void Dispose() => _db.Dispose();
+    public void Dispose()
+    {
+        _db.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private static Customer NewCustomer(string name, string taxId, DateTimeOffset createdAt, bool deleted = false) => new()
     {
@@ -105,7 +112,7 @@ public class SearchExecutorTests : IDisposable
     [Fact]
     public async Task SearchAsync_InFilter_MatchesAnyValue()
     {
-        var result = await Search(Request("name", "in", new[] { "Alice", "Diego" }));
+        var result = await Search(Request("name", "in", InFilterValues));
 
         result.Items.Select(c => c.Name).Should().BeEquivalentTo("Alice", "Diego");
     }
@@ -113,7 +120,7 @@ public class SearchExecutorTests : IDisposable
     [Fact]
     public async Task SearchAsync_BetweenFilter_IsInclusive()
     {
-        var result = await Search(Request("created_at", "between", new[] { "2025-01-02T00:00:00+00:00", "2025-01-03T00:00:00+00:00" }));
+        var result = await Search(Request("created_at", "between", BetweenBounds));
 
         result.Items.Select(c => c.Name).Should().BeEquivalentTo("Bruno", "Carla");
     }

@@ -198,6 +198,11 @@ public class CorsOriginsValidatorTests
 
 public class SensitiveDataTests
 {
+    private static readonly JsonSerializerOptions SensitiveAwareOptions = new()
+    {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { SensitiveJsonModifier.Modify } },
+    };
+
     private sealed class Sample
     {
         public string Name { get; set; } = "public";
@@ -229,12 +234,7 @@ public class SensitiveDataTests
     [Fact]
     public void JsonModifier_SensitiveProperty_IsNeverSerialized()
     {
-        var options = new JsonSerializerOptions
-        {
-            TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { SensitiveJsonModifier.Modify } },
-        };
-
-        var json = JsonSerializer.Serialize(new Sample(), options);
+        var json = JsonSerializer.Serialize(new Sample(), SensitiveAwareOptions);
 
         json.Should().Contain("public").And.NotContain("s3cr3t").And.NotContain("Secret");
     }

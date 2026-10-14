@@ -20,21 +20,21 @@ public static class OrderEventMessages
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    public static byte[] Serialize(OrderStatusChangedEvent @event) => JsonSerializer.SerializeToUtf8Bytes(@event, JsonOptions);
+    public static byte[] Serialize(OrderStatusChangedEvent statusChanged) => JsonSerializer.SerializeToUtf8Bytes(statusChanged, JsonOptions);
 
     /// <summary>Returns null for malformed JSON or a payload missing required fields.</summary>
     public static OrderStatusChangedEvent? Deserialize(ReadOnlySpan<byte> payload)
     {
         try
         {
-            var @event = JsonSerializer.Deserialize<OrderStatusChangedEvent>(payload, JsonOptions);
-            return @event is { OrderId: var id }
+            var statusChanged = JsonSerializer.Deserialize<OrderStatusChangedEvent>(payload, JsonOptions);
+            return statusChanged is { OrderId: var id }
                 && id != Guid.Empty
-                && !string.IsNullOrWhiteSpace(@event.CustomerEmail)
-                && !string.IsNullOrWhiteSpace(@event.CustomerName)
-                && !string.IsNullOrWhiteSpace(@event.OldStatus)
-                && !string.IsNullOrWhiteSpace(@event.NewStatus)
-                    ? @event
+                && !string.IsNullOrWhiteSpace(statusChanged.CustomerEmail)
+                && !string.IsNullOrWhiteSpace(statusChanged.CustomerName)
+                && !string.IsNullOrWhiteSpace(statusChanged.OldStatus)
+                && !string.IsNullOrWhiteSpace(statusChanged.NewStatus)
+                    ? statusChanged
                     : null;
         }
         catch (JsonException)
