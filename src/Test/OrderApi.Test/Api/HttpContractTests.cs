@@ -332,6 +332,33 @@ public class ResponseShapeTests
     }
 }
 
+[Collection(HostlessApiCollection.Name)]
+public class RateLimitContractTests(HostlessApiFactory factory)
+{
+    [Fact]
+    public async Task Health_IsNotRateLimited()
+    {
+        var client = factory.CreateClient();
+        for (var i = 0; i < 105; i++)
+        {
+            (await client.GetAsync("/health")).StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
+        }
+    }
+
+    [Fact]
+    public async Task OrderWrites_ExceedingPerRouteLimit_Return429()
+    {
+        var client = factory.ClientFor(subject: $"order-writer-{Guid.NewGuid():N}");
+        HttpResponseMessage? last = null;
+        for (var i = 0; i <= 30; i++)
+        {
+            last = await client.PostAsJsonAsync("/orders", new { });
+        }
+
+        last!.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
+}
+
 internal static class ContractJson
 {
     public static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
