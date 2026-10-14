@@ -1,6 +1,6 @@
 # dotnet-order-api
 
-Order Management API in ASP.NET Core (.NET 8) with EF Core and PostgreSQL. It implements the same domain
+Order Management API in ASP.NET Core (.NET 10) with EF Core and PostgreSQL. It implements the same domain
 as `fastapi-order-api` (the specification source: customers, orders, items, status transitions and the
 notification flow), following the Clean Architecture conventions of the `dotnet-feature` guidelines
 summarized in [`AGENTS.md`](./AGENTS.md).
@@ -103,7 +103,7 @@ Every error has the shape `{ "message", "code", "params", "request_id" }`.
 
 ## Running locally
 
-Requirements: .NET 8 SDK and Docker (Postgres, RabbitMQ, Mailpit).
+Requirements: .NET 10 SDK and Docker (Postgres, RabbitMQ, Mailpit).
 
 ```bash
 docker compose up -d
@@ -155,5 +155,3 @@ active.
 - **Rate limiter after authentication** so authenticated callers are partitioned by subject (anonymous callers by
   IP); the order differs slightly from "limiter before auth" but keeps per-user fairness.
 - **POST/PUT return the resource** (kept from the Python contract) instead of an empty `201` with only a location.
-- **`net8.0` target** because it is the SDK available when this project was generated; bumping the
-  `TargetFramework` and the package versions is the only change needed to move to a newer LTS.

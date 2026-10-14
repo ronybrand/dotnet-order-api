@@ -17,47 +17,51 @@ public static class RabbitMqTopology
         RequestedConnectionTimeout = TimeSpan.FromSeconds(3),
     };
 
-    public static void Declare(IModel channel)
+    public static async Task DeclareAsync(IChannel channel, CancellationToken cancellationToken = default)
     {
-        channel.QueueDeclare(OrderEventMessages.DeadLetterQueue, durable: true, exclusive: false, autoDelete: false);
-        channel.QueueDeclare(
+        await channel.QueueDeclareAsync(
+            OrderEventMessages.DeadLetterQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
+        await channel.QueueDeclareAsync(
             OrderEventMessages.Queue,
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: OrderEventMessages.QueueArguments);
+            arguments: OrderEventMessages.QueueArguments,
+            cancellationToken: cancellationToken);
     }
 }
 
 /// <summary>
 /// Publishes right after the order commit. A broker outage is only logged: the order status
 /// change already committed must never fail because a notification could not be queued
-/// (see ADR 0002: best-effort publish, not a transactional outbox).
+/// (see the README: best-effort publish, not a transactional outbox).
 /// </summary>
 public sealed partial class RabbitMqOrderEventPublisher(
     IOptions<RabbitMqOptions> options,
     ILogger<RabbitMqOrderEventPublisher> logger) : IOrderEventPublisher
 {
-    public Task PublishStatusChangedAsync(OrderStatusChangedEvent @event, CancellationToken cancellationToken = default)
+    public async Task PublishStatusChangedAsync(OrderStatusChangedEvent @event, CancellationToken cancellationToken = default)
     {
         try
         {
-            using var connection = RabbitMqTopology.CreateFactory(options.Value).CreateConnection();
-            using var channel = connection.CreateModel();
-            RabbitMqTopology.Declare(channel);
+            await using var connection = await RabbitMqTopology.CreateFactory(options.Value).CreateConnectionAsync(cancellationToken);
+            await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+            await RabbitMqTopology.DeclareAsync(channel, cancellationToken);
 
-            var properties = channel.CreateBasicProperties();
-            properties.ContentType = "application/json";
-            properties.Persistent = true;
-            channel.BasicPublish(string.Empty, OrderEventMessages.Queue, properties, OrderEventMessages.Serialize(@event));
+            var properties = new BasicProperties { ContentType = "application/json", DeliveryMode = DeliveryModes.Persistent };
+            await channel.BasicPublishAsync(
+                exchange: string.Empty,
+                routingKey: OrderEventMessages.Queue,
+                mandatory: false,
+                basicProperties: properties,
+                body: OrderEventMessages.Serialize(@event),
+                cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             // Never log the customer e-mail (PII): the order id is enough for traceability.
             LogPublishFailed(logger, ex, @event.OrderId);
         }
-
-        return Task.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to publish order_status_changed to RabbitMQ: order_id={OrderId}")]

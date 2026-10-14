@@ -1,6 +1,6 @@
 # Instructions for code agents in this repository
 
-Clean Architecture on .NET 8 (`Domain`, `Application`, `Infrastructure`, `Api`, `Worker`). The domain
+Clean Architecture on .NET 10 (`Domain`, `Application`, `Infrastructure`, `Api`, `Worker`). The domain
 specification lives in `README.md` (same domain as `fastapi-order-api`). Read the closest existing domain
 (`Customer` for simple entities, `Order` for aggregates with children and cross-domain side effects) and mirror
 its structure before adding or changing anything.

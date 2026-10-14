@@ -12,7 +12,7 @@ public static class OrderEventMessages
     /// Queue arguments must be identical on every declaration, otherwise RabbitMQ answers
     /// 406 PRECONDITION_FAILED; both producer and consumer use this single definition.
     /// </summary>
-    public static IDictionary<string, object> QueueArguments { get; } = new Dictionary<string, object>
+    public static IDictionary<string, object?> QueueArguments { get; } = new Dictionary<string, object?>
     {
         ["x-dead-letter-exchange"] = string.Empty,
         ["x-dead-letter-routing-key"] = DeadLetterQueue,

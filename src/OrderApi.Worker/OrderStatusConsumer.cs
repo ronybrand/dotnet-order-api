@@ -38,27 +38,29 @@ public sealed partial class OrderStatusConsumer(
 
     private async Task ConsumeAsync(CancellationToken stoppingToken)
     {
-        var factory = RabbitMqTopology.CreateFactory(options.Value);
-        factory.DispatchConsumersAsync = true;
-        using var connection = factory.CreateConnection();
-        using var channel = connection.CreateModel();
-        RabbitMqTopology.Declare(channel);
-        channel.BasicQos(0, 10, false);
+        await using var connection = await RabbitMqTopology.CreateFactory(options.Value).CreateConnectionAsync(stoppingToken);
+        await using var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
+        await RabbitMqTopology.DeclareAsync(channel, stoppingToken);
+        await channel.BasicQosAsync(0, 10, false, stoppingToken);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
-        consumer.Received += (_, delivery) => HandleAsync(channel, delivery, stoppingToken);
-        channel.BasicConsume(OrderEventMessages.Queue, autoAck: false, consumer);
+        consumer.ReceivedAsync += (_, delivery) => HandleAsync(channel, delivery, stoppingToken);
+        await channel.BasicConsumeAsync(OrderEventMessages.Queue, autoAck: false, consumer, stoppingToken);
         LogStarted(logger, OrderEventMessages.Queue);
 
         var shutdown = new TaskCompletionSource();
-        connection.ConnectionShutdown += (_, _) => shutdown.TrySetResult();
+        connection.ConnectionShutdownAsync += (_, _) =>
+        {
+            shutdown.TrySetResult();
+            return Task.CompletedTask;
+        };
         await using var registration = stoppingToken.Register(() => shutdown.TrySetResult());
         await shutdown.Task;
         stoppingToken.ThrowIfCancellationRequested();
         throw new InvalidOperationException("RabbitMQ connection closed");
     }
 
-    private async Task HandleAsync(IModel channel, BasicDeliverEventArgs delivery, CancellationToken cancellationToken)
+    private async Task HandleAsync(IChannel channel, BasicDeliverEventArgs delivery, CancellationToken cancellationToken)
     {
         var retryCount = RetryCountOf(delivery.BasicProperties);
         var body = delivery.Body.ToArray();
@@ -67,25 +69,28 @@ public sealed partial class OrderStatusConsumer(
         switch (outcome)
         {
             case ProcessingOutcome.Ack:
-                channel.BasicAck(delivery.DeliveryTag, false);
+                await channel.BasicAckAsync(delivery.DeliveryTag, false, cancellationToken);
                 break;
             case ProcessingOutcome.Retry:
                 await Task.Delay(RetryBackoff, cancellationToken);
-                var properties = channel.CreateBasicProperties();
-                properties.ContentType = "application/json";
-                properties.Persistent = true;
-                properties.Headers = new Dictionary<string, object> { [RetryHeader] = retryCount + 1 };
-                channel.BasicPublish(string.Empty, OrderEventMessages.Queue, properties, body);
-                channel.BasicAck(delivery.DeliveryTag, false);
+                var properties = new BasicProperties
+                {
+                    ContentType = "application/json",
+                    DeliveryMode = DeliveryModes.Persistent,
+                    Headers = new Dictionary<string, object?> { [RetryHeader] = retryCount + 1 },
+                };
+                await channel.BasicPublishAsync(string.Empty, OrderEventMessages.Queue, false, properties, body, cancellationToken);
+                await channel.BasicAckAsync(delivery.DeliveryTag, false, cancellationToken);
                 break;
+            case ProcessingOutcome.DeadLetter:
             default:
                 // requeue=false routes the message to the dead-letter queue configured on the queue.
-                channel.BasicNack(delivery.DeliveryTag, false, false);
+                await channel.BasicNackAsync(delivery.DeliveryTag, false, false, cancellationToken);
                 break;
         }
     }
 
-    private static int RetryCountOf(IBasicProperties properties) =>
+    private static int RetryCountOf(IReadOnlyBasicProperties properties) =>
         properties.Headers is not null && properties.Headers.TryGetValue(RetryHeader, out var value) && value is int count ? count : 0;
 
     [LoggerMessage(Level = LogLevel.Information, Message = "worker_started: queue={Queue}")]

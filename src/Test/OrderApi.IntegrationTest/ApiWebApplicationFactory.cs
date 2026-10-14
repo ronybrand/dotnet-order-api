@@ -17,7 +17,7 @@ namespace OrderApi.IntegrationTest;
 /// </summary>
 public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder().WithImage("postgres:16").Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16").Build();
     private readonly RSA _rsa = RSA.Create(2048);
     private string? _publicKeyPath;
 
@@ -37,6 +37,10 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>, I
         Environment.SetEnvironmentVariable("Jwt__Audience", TestTokens.Audience);
         Environment.SetEnvironmentVariable("Jwt__Issuer", TestTokens.Issuer);
         Environment.SetEnvironmentVariable("Database__MigrateOnStartup", "true");
+
+        // Creating a client boots the host, which applies the real migrations on startup;
+        // the schema must exist before ResetAsync truncates any table.
+        using var bootClient = CreateClient();
     }
 
     public new async Task DisposeAsync()
