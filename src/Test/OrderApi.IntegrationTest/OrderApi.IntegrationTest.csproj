@@ -32,6 +32,7 @@
     <ProjectReference Include="..\..\OrderApi.Domain\OrderApi.Domain.csproj" />
     <ProjectReference Include="..\..\OrderApi.Application\OrderApi.Application.csproj" />
     <ProjectReference Include="..\..\OrderApi.Infrastructure\OrderApi.Infrastructure.csproj" />
+    <ProjectReference Include="..\OrderApi.TestSupport\OrderApi.TestSupport.csproj" />
   </ItemGroup>
 
 </Project>
