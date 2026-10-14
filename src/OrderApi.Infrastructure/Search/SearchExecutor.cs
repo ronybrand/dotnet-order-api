@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using OrderApi.Domain.Common;
 using OrderApi.Domain.Common.Search;
 using OrderApi.Domain.Exceptions;
 
@@ -14,7 +13,8 @@ namespace OrderApi.Infrastructure.Search;
 /// <summary>
 /// Shared filter/sort/pagination engine. Fields are resolved from the EF Core model metadata
 /// (never from a hand-maintained allowlist), accepting both the CLR name and snake_case.
-/// Properties marked [Sensitive] are never resolved: filters on them are ignored and sorting by them is rejected.
+/// [Sensitive] only governs what is serialized and logged, not what can be searched: finding a customer by tax id or
+/// e-mail is a legitimate lookup, and every authenticated caller already gets the same rows either way.
 /// </summary>
 public static class SearchExecutor
 {
@@ -115,14 +115,8 @@ public static class SearchExecutor
         var normalized = field.ToLowerInvariant();
         return entityType.GetProperties().FirstOrDefault(p =>
             !p.IsShadowProperty()
-            && !IsSensitive(p)
             && (string.Equals(p.Name, field, StringComparison.OrdinalIgnoreCase) || ToSnakeCase(p.Name) == normalized));
     }
-
-    // A filter or sort on a PII field is an oracle (lk/gte reveal the value one character at a time)
-    // even though the response DTO hides it, so sensitive fields are not searchable at all.
-    private static bool IsSensitive(IProperty property) =>
-        property.PropertyInfo?.IsDefined(typeof(SensitiveAttribute), true) == true;
 
     private static string ToSnakeCase(string name) =>
         string.Concat(name.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
@@ -135,14 +129,20 @@ public static class SearchExecutor
         var member = PropertyAccess(parameter, property);
         try
         {
-            return condition.Op.ToLowerInvariant() switch
+            var op = condition.Op.ToLowerInvariant();
+            if (op is "gt" or "gte" or "lt" or "lte" or "between")
+            {
+                RequireOrderable(property);
+            }
+
+            return op switch
             {
                 "eq" => Expression.Equal(member, Constant(condition.Value, property)),
                 "neq" => Expression.NotEqual(member, Constant(condition.Value, property)),
-                "gt" => Expression.GreaterThan(member, Constant(condition.Value, property)),
-                "gte" => Expression.GreaterThanOrEqual(member, Constant(condition.Value, property)),
-                "lt" => Expression.LessThan(member, Constant(condition.Value, property)),
-                "lte" => Expression.LessThanOrEqual(member, Constant(condition.Value, property)),
+                "gt" => Ordered(member, property, condition.Value, Expression.GreaterThan),
+                "gte" => Ordered(member, property, condition.Value, Expression.GreaterThanOrEqual),
+                "lt" => Ordered(member, property, condition.Value, Expression.LessThan),
+                "lte" => Ordered(member, property, condition.Value, Expression.LessThanOrEqual),
                 "in" => BuildIn(member, property, condition.Value),
                 "between" => BuildBetween(member, property, condition.Value),
                 "lk" => BuildLike(member, property, condition.Value),
@@ -156,6 +156,32 @@ public static class SearchExecutor
                 ErrorCodes.ValidationInvalidFilter,
                 new Dictionary<string, object?> { ["field"] = field });
         }
+    }
+
+    // Enum and bool columns have no meaningful order (an enum is stored as its text code, so "greater than"
+    // would compare alphabetically): only equality and membership make sense for them.
+    private static void RequireOrderable(IProperty property)
+    {
+        var type = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType;
+        if (type.IsEnum || type == typeof(bool))
+        {
+            throw new FormatException("Ordering operators are not supported for this field type");
+        }
+    }
+
+    // Expression trees have no ">=" for strings (it would throw InvalidOperationException, i.e. a 400 for every
+    // string field); string.Compare(a, b) op 0 is the form EF Core translates.
+    private static BinaryExpression Ordered(
+        Expression member, IProperty property, object? raw, Func<Expression, Expression, BinaryExpression> compare)
+    {
+        var constant = Constant(raw, property);
+        if (property.ClrType != typeof(string))
+        {
+            return compare(member, constant);
+        }
+
+        var comparison = Expression.Call(typeof(string), nameof(string.Compare), null, member, constant);
+        return compare(comparison, Expression.Constant(0));
     }
 
     private static MethodCallExpression BuildIn(Expression member, IProperty property, object? raw)
@@ -178,8 +204,8 @@ public static class SearchExecutor
         }
 
         return Expression.AndAlso(
-            Expression.GreaterThanOrEqual(member, Constant(bounds[0], property)),
-            Expression.LessThanOrEqual(member, Constant(bounds[1], property)));
+            Ordered(member, property, bounds[0], Expression.GreaterThanOrEqual),
+            Ordered(member, property, bounds[1], Expression.LessThanOrEqual));
     }
 
     private static MethodCallExpression BuildLike(Expression member, IProperty property, object? raw)
@@ -212,6 +238,10 @@ public static class SearchExecutor
         IEnumerable enumerable => enumerable.Cast<object?>(),
         _ => throw new FormatException("A list of values is required"),
     };
+
+    // yyyy-MM-dd... only: DateTimeOffset.TryParse alone also guesses "01/02/2025" and "Jan 2 2025".
+    private static bool LooksLikeIsoDate(string text) =>
+        text.Length >= 10 && text[4] == '-' && text[7] == '-' && text[..4].All(char.IsAsciiDigit);
 
     private static object? ConvertValue(object? raw, Type clrType)
     {
@@ -263,17 +293,19 @@ public static class SearchExecutor
             return unsigned;
         }
 
-        if (type == typeof(decimal) && decimal.TryParse(text, NumberStyles.Number, culture, out var number))
+        if (type == typeof(decimal) && decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, culture, out var number))
         {
             return number;
         }
 
-        if (type == typeof(DateTimeOffset) && DateTimeOffset.TryParse(text, culture, DateTimeStyles.AssumeUniversal, out var date))
+        if (type == typeof(DateTimeOffset) && LooksLikeIsoDate(text) && DateTimeOffset.TryParse(text, culture, DateTimeStyles.AssumeUniversal, out var date))
         {
             return date;
         }
 
-        if (type.IsEnum && Enum.TryParse(type, text, true, out var enumValue))
+        // Names only: Enum.TryParse would also accept "1" or "99" (an undefined value the converter cannot map).
+        if (type.IsEnum && char.IsAsciiLetter(text[0]) && Enum.TryParse(type, text, true, out var enumValue)
+            && Enum.IsDefined(type, enumValue))
         {
             return enumValue;
         }

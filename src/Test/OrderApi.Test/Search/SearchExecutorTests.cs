@@ -11,6 +11,8 @@ namespace OrderApi.Test.Search;
 public class SearchExecutorTests : IDisposable
 {
     private static readonly string[] InFilterValues = ["Alice", "Diego"];
+    private static readonly string[] TextBetweenBounds = ["Bruno", "Carla"];
+    private static readonly string[] EnumBetweenBounds = ["OPEN", "CONFIRMED"];
     private static readonly string[] BetweenBounds = ["2025-01-02T00:00:00+00:00", "2025-01-03T00:00:00+00:00"];
 
     private readonly AppDbContext _db;
@@ -70,26 +72,44 @@ public class SearchExecutorTests : IDisposable
     }
 
     [Theory]
-    [InlineData("email", "lk", "alice")]
-    [InlineData("tax_id", "eq", "TAX-0001")]
-    [InlineData("TaxId", "gte", "TAX-0003")]
-    [InlineData("passport_number", "lk", "AB")]
-    public async Task SearchAsync_SensitiveFieldFilter_IsIgnoredAndCannotNarrowResults(string field, string op, string value)
+    [InlineData("email", "eq", "alice@example.com", "Alice")]
+    [InlineData("tax_id", "eq", "TAX-0002", "Bruno")]
+    [InlineData("TaxId", "gte", "TAX-0004", "Diego")]
+    public async Task SearchAsync_SensitiveFieldFilter_NarrowsResults(string field, string op, string value, string expectedName)
     {
         var result = await Search(Request(field, op, value));
 
-        result.Total.Should().Be(4);
+        result.Items.Should().ContainSingle().Which.Name.Should().Be(expectedName);
     }
 
     [Theory]
-    [InlineData("email")]
-    [InlineData("-tax_id")]
-    [InlineData("passport_number")]
-    public async Task SearchAsync_SortBySensitiveField_IsRejected(string sort)
+    [InlineData("email", "Alice")]
+    [InlineData("-tax_id", "Diego")]
+    public async Task SearchAsync_SortBySensitiveField_Works(string sort, string expectedFirst)
     {
-        var act = () => Search(Request(sort: sort));
+        var result = await Search(Request(sort: sort));
 
-        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationUnknownSort);
+        result.Items[0].Name.Should().Be(expectedFirst);
+    }
+
+    [Theory]
+    [InlineData("gt", "Bruno", "Carla,Diego")]
+    [InlineData("gte", "Carla", "Carla,Diego")]
+    [InlineData("lt", "Bruno", "Alice")]
+    [InlineData("lte", "Bruno", "Alice,Bruno")]
+    public async Task SearchAsync_OrderingOperatorsOnText_CompareStrings(string op, string value, string expected)
+    {
+        var result = await Search(Request("name", op, value, sort: "name"));
+
+        result.Items.Select(c => c.Name).Should().Equal(expected.Split(','));
+    }
+
+    [Fact]
+    public async Task SearchAsync_BetweenOnText_IsInclusive()
+    {
+        var result = await Search(Request("name", "between", TextBetweenBounds, sort: "name"));
+
+        result.Items.Select(c => c.Name).Should().Equal("Bruno", "Carla");
     }
 
     [Fact]
@@ -173,14 +193,6 @@ public class SearchExecutorTests : IDisposable
     }
 
     [Fact]
-    public async Task SearchAsync_OrderingOperatorOnString_ThrowsValidation()
-    {
-        var act = () => Search(Request("name", "gt", "A"));
-
-        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationInvalidFilter);
-    }
-
-    [Fact]
     public async Task SearchAsync_SortAscending_OrdersByField()
     {
         var result = await Search(Request(sort: "name"));
@@ -203,6 +215,70 @@ public class SearchExecutorTests : IDisposable
 
         (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationUnknownSort);
     }
+
+    private Task<PagedResult<Order>> SearchOrders(SearchRequest request) =>
+        _db.Orders.SearchAsync(request, _db.Model.FindEntityType(typeof(Order))!);
+
+    private Task<PagedResult<OrderItem>> SearchItems(SearchRequest request) =>
+        _db.OrderItems.SearchAsync(request, _db.Model.FindEntityType(typeof(OrderItem))!);
+
+    private static async Task AssertInvalidFilter(Func<Task> act) =>
+        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationInvalidFilter);
+
+    [Theory]
+    [InlineData("gt")]
+    [InlineData("gte")]
+    [InlineData("lt")]
+    [InlineData("lte")]
+    public async Task SearchAsync_OrderingOperatorOnEnum_IsRejected(string op)
+    {
+        // The status is stored as its text code: "greater than" would compare alphabetically, which means nothing.
+        await AssertInvalidFilter(() => SearchOrders(Request("status", op, "OPEN")));
+    }
+
+    [Fact]
+    public async Task SearchAsync_BetweenOnEnum_IsRejected() =>
+        await AssertInvalidFilter(() => SearchOrders(Request("status", "between", EnumBetweenBounds)));
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("99")]
+    [InlineData("-1")]
+    public async Task SearchAsync_NumericTextForEnum_IsRejected(string value) =>
+        await AssertInvalidFilter(() => SearchOrders(Request("status", "eq", value)));
+
+    [Fact]
+    public async Task SearchAsync_EnumByName_IsCaseInsensitive()
+    {
+        _db.Orders.Add(new Order { CustomerId = Guid.NewGuid(), Status = OrderStatus.Confirmed, CreatedBy = "t", UpdatedBy = "t" });
+        await _db.SaveChangesAsync();
+
+        var result = await SearchOrders(Request("status", "eq", "confirmed"));
+
+        result.Total.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("1,5")]
+    [InlineData("1,000.50")]
+    [InlineData("1e3")]
+    public async Task SearchAsync_DecimalWithThousandsSeparatorOrExponent_IsRejected(string value) =>
+        await AssertInvalidFilter(() => SearchItems(Request("unit_price", "eq", value)));
+
+    [Fact]
+    public async Task SearchAsync_PlainDecimal_IsAccepted()
+    {
+        var result = await SearchItems(Request("unit_price", "eq", "1.50"));
+
+        result.Total.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("01/02/2025")]
+    [InlineData("Jan 2 2025")]
+    [InlineData("yesterday")]
+    public async Task SearchAsync_DateThatIsNotIso8601_IsRejected(string value) =>
+        await AssertInvalidFilter(() => Search(Request("created_at", "gte", value)));
 
     [Fact]
     public async Task SearchAsync_Pagination_IsZeroBasedAndReportsTotal()

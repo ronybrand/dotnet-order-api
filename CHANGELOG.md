@@ -17,6 +17,9 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 
 ### Fixed
 
+- Filtros tipados: operadores de ordem (`gt`, `gte`, `lt`, `lte`, `between`) rejeitados em enum e bool; enum só por nome
+  (`"1"` e `"99"` não são mais aceitos); datas só em ISO 8601; decimais sem separador de milhar nem expoente.
+- Campos `[Sensitive]` voltam a ser filtráveis e ordenáveis: o atributo vale para serialização e log, não para busca.
 - `Customer` ganhou token de concorrência (`xmin`); criar um pedido reescreve a linha do cliente no mesmo `SaveChanges`,
   então excluir o cliente em paralelo falha com 409 em vez de deixar pedido ativo de cliente excluído. O `PUT` de cliente
   também deixa de perder atualizações concorrentes.
