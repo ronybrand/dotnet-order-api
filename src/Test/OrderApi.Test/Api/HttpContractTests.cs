@@ -43,6 +43,29 @@ public class AuthenticationContractTests(HostlessApiFactory factory)
     }
 
     [Fact]
+    public async Task NoToken_ReturnsErrorContractAndBearerChallenge()
+    {
+        var response = await factory.CreateClient().GetAsync($"/orders/{SomeId}");
+
+        response.Headers.WwwAuthenticate.Should().ContainSingle().Which.Scheme.Should().Be("Bearer");
+        var error = await response.Content.ReadFromJsonAsync<JsonElement>();
+        error.GetProperty("code").GetString().Should().Be("AUTH-01");
+        error.GetProperty("request_id").GetString().Should().Be(response.Headers.GetValues("X-Request-Id").Single());
+    }
+
+    [Fact]
+    public async Task AdminOnlyRoute_WithUserRole_ReturnsErrorContract()
+    {
+        var token = TestTokens.Create(factory.SigningKey, Subject(), ["user"]);
+
+        var response = await WithToken(token).DeleteAsync($"/customers/{SomeId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var error = await response.Content.ReadFromJsonAsync<JsonElement>();
+        error.GetProperty("code").GetString().Should().Be("AUTH-02");
+    }
+
+    [Fact]
     public async Task UnauthorizedResponse_StillCarriesSecurityHeaders()
     {
         var response = await factory.CreateClient().GetAsync($"/orders/{SomeId}");

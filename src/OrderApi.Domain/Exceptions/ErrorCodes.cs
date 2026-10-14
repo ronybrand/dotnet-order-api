@@ -20,6 +20,9 @@ public static class ErrorCodes
     public const string ConflictPassportNumber = "CONFLICT-02";
     public const string ConflictCustomerHasOrders = "CONFLICT-03";
 
+    public const string AuthUnauthenticated = "AUTH-01";
+    public const string AuthForbidden = "AUTH-02";
+
     public const string RateLimit = "RATE-00";
     public const string Internal = "INTERNAL-00";
 }

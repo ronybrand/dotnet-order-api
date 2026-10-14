@@ -15,6 +15,9 @@ public interface IEmailSender
     Task SendAsync(string recipient, string subject, string htmlBody, CancellationToken cancellationToken = default);
 }
 
+/// <summary>A send failure that no retry can fix (e.g. an invalid recipient): the message goes straight to the DLQ.</summary>
+public sealed class PermanentEmailException(string message, Exception? innerException = null) : Exception(message, innerException);
+
 public sealed partial class NotificationProcessor(IEmailSender emailSender, ILogger<NotificationProcessor> logger)
 {
     public const int MaxRetries = 3;
@@ -36,6 +39,11 @@ public sealed partial class NotificationProcessor(IEmailSender emailSender, ILog
             LogSent(logger, statusChanged.OrderId, statusChanged.OldStatus, statusChanged.NewStatus);
             return ProcessingOutcome.Ack;
         }
+        catch (PermanentEmailException ex)
+        {
+            LogPermanentFailure(logger, ex, statusChanged.OrderId);
+            return ProcessingOutcome.DeadLetter;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             if (retryCount >= MaxRetries)
@@ -54,6 +62,9 @@ public sealed partial class NotificationProcessor(IEmailSender emailSender, ILog
 
     [LoggerMessage(Level = LogLevel.Information, Message = "order_status_notification_sent: order_id={OrderId} old_status={OldStatus} new_status={NewStatus}")]
     private static partial void LogSent(ILogger logger, Guid orderId, string oldStatus, string newStatus);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Permanent failure sending notification for order_id={OrderId}, sending to DLQ")]
+    private static partial void LogPermanentFailure(ILogger logger, Exception exception, Guid orderId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Exceeded {MaxRetries} retries for order_id={OrderId}, sending to DLQ")]
     private static partial void LogGaveUp(ILogger logger, Exception exception, Guid orderId, int maxRetries);

@@ -1,6 +1,9 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using OrderApi.Api.Middleware;
+using OrderApi.Application.DTOs;
+using OrderApi.Domain.Exceptions;
 
 namespace OrderApi.Api.Extensions;
 
@@ -38,6 +41,22 @@ public static class JwtAuthenticationExtensions
 
                         return Task.CompletedTask;
                     },
+                    // 401 and 403 carry the same error contract as every other failure instead of an empty body.
+                    OnChallenge = context =>
+                    {
+                        context.HandleResponse();
+                        context.Response.Headers.WWWAuthenticate = context.AuthenticateFailure is null
+                            ? "Bearer"
+                            : "Bearer error=\"invalid_token\"";
+                        return GlobalExceptionHandlerMiddleware.WriteAsync(
+                            context.HttpContext,
+                            StatusCodes.Status401Unauthorized,
+                            new ErrorResponse("Authentication required", ErrorCodes.AuthUnauthenticated, null, context.HttpContext.TraceIdentifier));
+                    },
+                    OnForbidden = context => GlobalExceptionHandlerMiddleware.WriteAsync(
+                        context.HttpContext,
+                        StatusCodes.Status403Forbidden,
+                        new ErrorResponse("Access denied", ErrorCodes.AuthForbidden, null, context.HttpContext.TraceIdentifier)),
                 };
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
