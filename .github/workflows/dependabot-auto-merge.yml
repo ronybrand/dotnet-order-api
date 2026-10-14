@@ -15,9 +15,8 @@ jobs:
         id: metadata
 
       # Auto-merge only enters the queue after the required checks (branch protection) pass.
-      # Only patch bumps are merged unattended: a compromised minor release of a dependency
-      # would otherwise reach main with the CI as its only gate. Minor and major are reviewed manually.
-      - if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
+      # Patch and minor bumps are merged unattended; a major bump is left out and always reviewed manually.
+      - if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
