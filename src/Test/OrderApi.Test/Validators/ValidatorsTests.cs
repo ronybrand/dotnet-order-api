@@ -41,6 +41,28 @@ public class CustomerValidatorsTests
     public void Create_InvalidPassport_Fails(string passport) =>
         _create.TestValidate(Valid() with { PassportNumber = passport }).ShouldHaveValidationErrorFor(r => r.PassportNumber);
 
+    [Fact]
+    public void Create_NameLongerThanColumn_Fails() =>
+        _create.TestValidate(Valid() with { Name = new string('a', 201) }).ShouldHaveValidationErrorFor(r => r.Name);
+
+    [Fact]
+    public void Create_NameAtColumnLimit_IsValid() =>
+        _create.TestValidate(Valid() with { Name = new string('a', 200) }).ShouldNotHaveValidationErrorFor(r => r.Name);
+
+    [Fact]
+    public void Create_EmailLongerThanColumn_Fails()
+    {
+        var email = new string('a', 64) + "@" + string.Concat(Enumerable.Repeat(new string('b', 60) + ".", 5)) + "com";
+
+        _create.TestValidate(Valid() with { Email = email }).ShouldHaveValidationErrorFor(r => r.Email)
+            .WithErrorCode("MaximumLengthValidator");
+    }
+
+    [Fact]
+    public void Update_NameLongerThanColumn_Fails() =>
+        _update.TestValidate(new UpdateCustomerRequest(new string('a', 201), "123.456-78", null, "ana@example.com"))
+            .ShouldHaveValidationErrorFor(r => r.Name);
+
     [Theory]
     [InlineData("")]
     [InlineData("not-an-email")]
@@ -121,6 +143,14 @@ public class OrderValidatorsTests
     [Fact]
     public void Item_PriceWithTwoDecimals_IsValid() =>
         _item.TestValidate(ValidItem() with { UnitPrice = 1.23m }).ShouldNotHaveAnyValidationErrors();
+
+    [Fact]
+    public void Item_UnitPriceAboveColumnLimit_Fails() =>
+        _item.TestValidate(ValidItem() with { UnitPrice = 10_000_000_000m }).ShouldHaveValidationErrorFor(i => i.UnitPrice);
+
+    [Fact]
+    public void Item_UnitPriceAtColumnLimit_IsValid() =>
+        _item.TestValidate(ValidItem() with { UnitPrice = 9_999_999_999.99m }).ShouldNotHaveAnyValidationErrors();
 
     [Theory]
     [InlineData(0)]

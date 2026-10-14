@@ -69,6 +69,29 @@ public class SearchExecutorTests : IDisposable
         result.Items.Should().NotContain(c => c.Name == "Erased");
     }
 
+    [Theory]
+    [InlineData("email", "lk", "alice")]
+    [InlineData("tax_id", "eq", "TAX-0001")]
+    [InlineData("TaxId", "gte", "TAX-0003")]
+    [InlineData("passport_number", "lk", "AB")]
+    public async Task SearchAsync_SensitiveFieldFilter_IsIgnoredAndCannotNarrowResults(string field, string op, string value)
+    {
+        var result = await Search(Request(field, op, value));
+
+        result.Total.Should().Be(4);
+    }
+
+    [Theory]
+    [InlineData("email")]
+    [InlineData("-tax_id")]
+    [InlineData("passport_number")]
+    public async Task SearchAsync_SortBySensitiveField_IsRejected(string sort)
+    {
+        var act = () => Search(Request(sort: sort));
+
+        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationUnknownSort);
+    }
+
     [Fact]
     public async Task SearchAsync_EqFilter_MatchesProperty()
     {
@@ -80,7 +103,7 @@ public class SearchExecutorTests : IDisposable
     [Fact]
     public async Task SearchAsync_SnakeCaseField_IsResolvedFromEntityMetadata()
     {
-        var result = await Search(Request("tax_id", value: "TAX-0003"));
+        var result = await Search(Request("created_at", value: "2025-01-03T00:00:00+00:00"));
 
         result.Items.Should().ContainSingle().Which.Name.Should().Be("Carla");
     }

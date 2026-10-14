@@ -37,6 +37,7 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Program>, I
         Environment.SetEnvironmentVariable("Jwt__PublicKeyPath", _publicKeyPath);
         Environment.SetEnvironmentVariable("Jwt__Audience", TestTokens.Audience);
         Environment.SetEnvironmentVariable("Jwt__Issuer", TestTokens.Issuer);
+        Environment.SetEnvironmentVariable("Cors__AllowedOrigins", "https://app.example.com");
         Environment.SetEnvironmentVariable("Database__MigrateOnStartup", "true");
 
         // Creating a client boots the host, which applies the real migrations on startup;

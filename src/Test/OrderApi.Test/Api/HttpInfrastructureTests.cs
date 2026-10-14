@@ -175,24 +175,24 @@ public class CorsOriginsValidatorTests
         new ConfigurationBuilder().AddInMemoryCollection(origins is null ? [] : [new("Cors:AllowedOrigins", origins)]).Build();
 
     [Fact]
-    public void GetAllowedOrigins_Production_EmptyList_FailsFast()
+    public void GetAllowedOrigins_NonDevelopment_EmptyList_FailsFast()
     {
-        var act = () => CorsOriginsValidator.GetAllowedOrigins(Config(null), isProduction: true);
+        var act = () => CorsOriginsValidator.GetAllowedOrigins(Config(null), isDevelopment: false);
 
         act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
-    public void GetAllowedOrigins_Production_WithOrigins_ReturnsThem()
+    public void GetAllowedOrigins_NonDevelopment_WithOrigins_ReturnsThem()
     {
-        CorsOriginsValidator.GetAllowedOrigins(Config("https://a.com,https://b.com"), isProduction: true)
+        CorsOriginsValidator.GetAllowedOrigins(Config("https://a.com,https://b.com"), isDevelopment: false)
             .Should().Equal("https://a.com", "https://b.com");
     }
 
     [Fact]
     public void GetAllowedOrigins_Development_EmptyList_IsAllowed()
     {
-        CorsOriginsValidator.GetAllowedOrigins(Config(null), isProduction: false).Should().BeEmpty();
+        CorsOriginsValidator.GetAllowedOrigins(Config(null), isDevelopment: true).Should().BeEmpty();
     }
 }
 

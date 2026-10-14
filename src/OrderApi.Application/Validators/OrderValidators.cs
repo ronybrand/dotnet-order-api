@@ -1,18 +1,20 @@
 using FluentValidation;
 using OrderApi.Application.DTOs;
 using OrderApi.Application.Services;
+using OrderApi.Domain.Common;
 
 namespace OrderApi.Application.Validators;
 
 public sealed class ItemRequestValidator : AbstractValidator<ItemRequest>
 {
-    public const int MaxDescriptionLength = 255;
+    public const int MaxDescriptionLength = FieldLimits.ItemDescription;
 
     public ItemRequestValidator()
     {
         RuleFor(i => i.Description).NotEmpty().MaximumLength(MaxDescriptionLength);
         RuleFor(i => i.UnitPrice)
             .GreaterThan(0)
+            .LessThanOrEqualTo(FieldLimits.MaxUnitPrice)
             .Must(price => decimal.Round(price, 2) == price)
             .WithMessage("'{PropertyName}' must have at most 2 decimal places.");
         RuleFor(i => i.Quantity).GreaterThan(0);
