@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using FluentValidation;
 using OrderApi.Application.DTOs;
+using OrderApi.Domain.Common;
 
 namespace OrderApi.Application.Validators;
 
@@ -21,10 +22,10 @@ internal static partial class CustomerRules
         Expression<Func<T, string>> email)
     {
         var getPassportNumber = passportNumber.Compile();
-        validator.RuleFor(name).NotEmpty();
+        validator.RuleFor(name).NotEmpty().MaximumLength(FieldLimits.CustomerName);
         validator.RuleFor(taxId).NotEmpty().Matches(TaxIdPattern());
         validator.RuleFor(passportNumber).Matches(PassportPattern()).When(request => !string.IsNullOrEmpty(getPassportNumber(request)));
-        validator.RuleFor(email).NotEmpty().EmailAddress();
+        validator.RuleFor(email).NotEmpty().MaximumLength(FieldLimits.Email).EmailAddress();
     }
 }
 

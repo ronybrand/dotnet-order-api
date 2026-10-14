@@ -25,6 +25,7 @@ public sealed class HostlessApiFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Jwt__PublicKeyPath", _publicKeyPath);
         Environment.SetEnvironmentVariable("Jwt__Audience", TestTokens.Audience);
         Environment.SetEnvironmentVariable("Jwt__Issuer", TestTokens.Issuer);
+        Environment.SetEnvironmentVariable("Cors__AllowedOrigins", "https://app.example.com");
         Environment.SetEnvironmentVariable("Database__MigrateOnStartup", "false");
     }
 

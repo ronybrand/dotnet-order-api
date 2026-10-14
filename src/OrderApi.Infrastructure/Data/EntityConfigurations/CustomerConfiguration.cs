@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OrderApi.Domain.Common;
 using OrderApi.Domain.Entities;
 
 namespace OrderApi.Infrastructure.Data.EntityConfigurations;
@@ -14,10 +15,10 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.ToTable("customers");
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id).HasDefaultValueSql("gen_random_uuid()");
-        builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
+        builder.Property(c => c.Name).IsRequired().HasMaxLength(FieldLimits.CustomerName);
         builder.Property(c => c.TaxId).IsRequired().HasMaxLength(20);
         builder.Property(c => c.PassportNumber).HasMaxLength(9);
-        builder.Property(c => c.Email).IsRequired().HasMaxLength(320);
+        builder.Property(c => c.Email).IsRequired().HasMaxLength(FieldLimits.Email);
         builder.Property(c => c.CreatedBy).IsRequired().HasMaxLength(200);
         builder.Property(c => c.UpdatedBy).IsRequired().HasMaxLength(200);
         builder.Property(c => c.DeletedBy).HasMaxLength(200);

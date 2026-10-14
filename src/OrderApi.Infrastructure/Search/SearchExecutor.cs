@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using OrderApi.Domain.Common;
 using OrderApi.Domain.Common.Search;
 using OrderApi.Domain.Exceptions;
 
@@ -13,6 +14,7 @@ namespace OrderApi.Infrastructure.Search;
 /// <summary>
 /// Shared filter/sort/pagination engine. Fields are resolved from the EF Core model metadata
 /// (never from a hand-maintained allowlist), accepting both the CLR name and snake_case.
+/// Properties marked [Sensitive] are never resolved: filters on them are ignored and sorting by them is rejected.
 /// </summary>
 public static class SearchExecutor
 {
@@ -113,8 +115,14 @@ public static class SearchExecutor
         var normalized = field.ToLowerInvariant();
         return entityType.GetProperties().FirstOrDefault(p =>
             !p.IsShadowProperty()
+            && !IsSensitive(p)
             && (string.Equals(p.Name, field, StringComparison.OrdinalIgnoreCase) || ToSnakeCase(p.Name) == normalized));
     }
+
+    // A filter or sort on a PII field is an oracle (lk/gte reveal the value one character at a time)
+    // even though the response DTO hides it, so sensitive fields are not searchable at all.
+    private static bool IsSensitive(IProperty property) =>
+        property.PropertyInfo?.IsDefined(typeof(SensitiveAttribute), true) == true;
 
     private static string ToSnakeCase(string name) =>
         string.Concat(name.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));

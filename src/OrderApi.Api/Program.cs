@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS fails the startup when no origin is configured in production: never silently open.
-var allowedOrigins = CorsOriginsValidator.GetAllowedOrigins(builder.Configuration, builder.Environment.IsProduction());
+// CORS fails the startup when no origin is configured outside Development: never silently open.
+var allowedOrigins = CorsOriginsValidator.GetAllowedOrigins(builder.Configuration, builder.Environment.IsDevelopment());
 
 // Generous but finite body limit: the body is read into memory before any validation runs.
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 10 * 1024 * 1024);
