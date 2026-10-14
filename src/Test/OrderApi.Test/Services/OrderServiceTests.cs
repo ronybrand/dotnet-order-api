@@ -158,6 +158,17 @@ public class OrderServiceTests
         _orders.Verify(r => r.UpdateAsync(order, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task AddItemAsync_OrderAlreadyAtMaxItems_ThrowsValidation()
+    {
+        var order = GivenOrder(OrderStatus.Open, [.. Enumerable.Range(0, OrderService.MaxItemsPerOrder).Select(_ => Line())]);
+
+        var act = () => _service.AddItemAsync(order.Id, Item());
+
+        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationRequest);
+        _orders.Verify(r => r.UpdateAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Theory]
     [InlineData(OrderStatus.Confirmed)]
     [InlineData(OrderStatus.Canceled)]

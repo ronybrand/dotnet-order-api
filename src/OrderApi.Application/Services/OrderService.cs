@@ -27,13 +27,7 @@ public sealed class OrderService(
                 new Dictionary<string, object?> { ["customer_id"] = request.CustomerId });
 
         var items = request.Items ?? [];
-        if (items.Count > MaxItemsPerOrder)
-        {
-            throw new ValidationDomainException(
-                $"An order can have at most {MaxItemsPerOrder} items",
-                ErrorCodes.ValidationRequest,
-                new Dictionary<string, object?> { ["field"] = "items", ["max"] = MaxItemsPerOrder });
-        }
+        AssertItemCountWithinLimit(items.Count);
 
         var now = timeProvider.GetUtcNow();
         var order = new Order
@@ -64,6 +58,7 @@ public sealed class OrderService(
     public async Task<OrderDto> AddItemAsync(Guid orderId, ItemRequest request, CancellationToken cancellationToken = default)
     {
         var order = await GetEditableAsync(orderId, cancellationToken);
+        AssertItemCountWithinLimit(order.Items.Count + 1);
         order.Items.Add(MapToItem(request));
         return await SaveItemChangeAsync(order, cancellationToken);
     }
@@ -140,6 +135,17 @@ public sealed class OrderService(
             $"Order {id} is not editable in status {order.Status.ToCode()}",
             ErrorCodes.ValidationOrderNotEditable,
             new Dictionary<string, object?> { ["id"] = id, ["status"] = order.Status.ToCode() });
+    }
+
+    private static void AssertItemCountWithinLimit(int count)
+    {
+        if (count > MaxItemsPerOrder)
+        {
+            throw new ValidationDomainException(
+                $"An order can have at most {MaxItemsPerOrder} items",
+                ErrorCodes.ValidationRequest,
+                new Dictionary<string, object?> { ["field"] = "items", ["max"] = MaxItemsPerOrder });
+        }
     }
 
     private static OrderItem FindItem(Order order, Guid itemId) =>

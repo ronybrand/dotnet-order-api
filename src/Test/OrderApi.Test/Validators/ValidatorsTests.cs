@@ -37,6 +37,16 @@ public class CustomerValidatorsTests
     public void Create_InvalidTaxId_Fails(string taxId) =>
         _create.TestValidate(Valid() with { TaxId = taxId }).ShouldHaveValidationErrorFor(r => r.TaxId);
 
+    // .NET's "$" also matches before a trailing newline, which would let "12345678\n" slip past the
+    // unique index as a different value from "12345678".
+    [Fact]
+    public void Create_TaxIdWithTrailingNewline_Fails() =>
+        _create.TestValidate(Valid() with { TaxId = "12345678\n" }).ShouldHaveValidationErrorFor(r => r.TaxId);
+
+    [Fact]
+    public void Create_PassportWithTrailingNewline_Fails() =>
+        _create.TestValidate(Valid() with { PassportNumber = "AB123456\n" }).ShouldHaveValidationErrorFor(r => r.PassportNumber);
+
     [Theory]
     [InlineData("ab123456")]
     [InlineData("AB123")]
@@ -248,6 +258,16 @@ public class SearchRequestValidatorTests
 
         _validator.TestValidate(WithFilters(OneFilter(new FilterCondition("in", values)))).ShouldHaveValidationErrorFor(r => r.Filters);
     }
+
+    [Fact]
+    public void LikeTermAboveLimit_Fails() =>
+        _validator.TestValidate(WithFilters(OneFilter(new FilterCondition("lk", new string('a', SearchRequestValidator.MaxValueLength + 1)))))
+            .ShouldHaveValidationErrorFor(r => r.Filters);
+
+    [Fact]
+    public void LikeTermAtLimit_IsValid() =>
+        _validator.TestValidate(WithFilters(OneFilter(new FilterCondition("lk", new string('a', SearchRequestValidator.MaxValueLength)))))
+            .ShouldNotHaveAnyValidationErrors();
 
     [Fact]
     public void InListAtLimit_IsValid()

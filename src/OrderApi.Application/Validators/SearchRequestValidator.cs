@@ -11,6 +11,7 @@ public sealed class SearchRequestValidator : AbstractValidator<SearchRequest>
     public const int MaxFilterFields = 10;
     public const int MaxConditionsPerField = 10;
     public const int MaxInValues = 100;
+    public const int MaxValueLength = 200;
 
     public SearchRequestValidator()
     {
@@ -19,7 +20,7 @@ public sealed class SearchRequestValidator : AbstractValidator<SearchRequest>
         RuleFor(r => r.Size).InclusiveBetween(1, MaxPageSize);
         RuleFor(r => r.Filters)
             .Must(HasWellFormedFilters)
-            .WithMessage($"'{{PropertyName}}' is malformed or exceeds {MaxFilterFields} fields, {MaxConditionsPerField} conditions per field or {MaxInValues} values per list.")
+            .WithMessage($"'{{PropertyName}}' is malformed or exceeds {MaxFilterFields} fields, {MaxConditionsPerField} conditions per field, {MaxInValues} values per list or {MaxValueLength} characters per value.")
             .When(r => r.Filters is not null);
     }
 
@@ -33,7 +34,8 @@ public sealed class SearchRequestValidator : AbstractValidator<SearchRequest>
         || (filters.Count <= MaxFilterFields
             && filters.Values.All(conditions =>
                 conditions is { Count: <= MaxConditionsPerField }
-                && conditions.All(condition => condition is { Op: not null } && ValueCount(condition.Value) <= MaxInValues)));
+                && conditions.All(condition => condition is { Op: not null } && ValueCount(condition.Value) <= MaxInValues
+                    && ValuesFit(condition.Value))));
 
     private static int ValueCount(object? value) => value switch
     {
@@ -41,5 +43,14 @@ public sealed class SearchRequestValidator : AbstractValidator<SearchRequest>
         string => 1,
         ICollection collection => collection.Count,
         _ => 1,
+    };
+
+    private static bool ValuesFit(object? value) => value switch
+    {
+        string text => text.Length <= MaxValueLength,
+        JsonElement { ValueKind: JsonValueKind.String } element => element.GetString()!.Length <= MaxValueLength,
+        JsonElement { ValueKind: JsonValueKind.Array } array => array.EnumerateArray().All(item => ValuesFit(item)),
+        IEnumerable items => items.Cast<object?>().All(ValuesFit),
+        _ => true,
     };
 }
