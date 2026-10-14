@@ -204,6 +204,70 @@ public class SearchExecutorTests : IDisposable
         (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationUnknownSort);
     }
 
+    private Task<PagedResult<Order>> SearchOrders(SearchRequest request) =>
+        _db.Orders.SearchAsync(request, _db.Model.FindEntityType(typeof(Order))!);
+
+    private Task<PagedResult<OrderItem>> SearchItems(SearchRequest request) =>
+        _db.OrderItems.SearchAsync(request, _db.Model.FindEntityType(typeof(OrderItem))!);
+
+    private static async Task AssertInvalidFilter(Func<Task> act) =>
+        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationInvalidFilter);
+
+    [Theory]
+    [InlineData("gt")]
+    [InlineData("gte")]
+    [InlineData("lt")]
+    [InlineData("lte")]
+    public async Task SearchAsync_OrderingOperatorOnEnum_IsRejected(string op)
+    {
+        // The status is stored as its text code: "greater than" would compare alphabetically, which means nothing.
+        await AssertInvalidFilter(() => SearchOrders(Request("status", op, "OPEN")));
+    }
+
+    [Fact]
+    public async Task SearchAsync_BetweenOnEnum_IsRejected() =>
+        await AssertInvalidFilter(() => SearchOrders(Request("status", "between", new[] { "OPEN", "CONFIRMED" })));
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("99")]
+    [InlineData("-1")]
+    public async Task SearchAsync_NumericTextForEnum_IsRejected(string value) =>
+        await AssertInvalidFilter(() => SearchOrders(Request("status", "eq", value)));
+
+    [Fact]
+    public async Task SearchAsync_EnumByName_IsCaseInsensitive()
+    {
+        _db.Orders.Add(new Order { CustomerId = Guid.NewGuid(), Status = OrderStatus.Confirmed, CreatedBy = "t", UpdatedBy = "t" });
+        await _db.SaveChangesAsync();
+
+        var result = await SearchOrders(Request("status", "eq", "confirmed"));
+
+        result.Total.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("1,5")]
+    [InlineData("1,000.50")]
+    [InlineData("1e3")]
+    public async Task SearchAsync_DecimalWithThousandsSeparatorOrExponent_IsRejected(string value) =>
+        await AssertInvalidFilter(() => SearchItems(Request("unit_price", "eq", value)));
+
+    [Fact]
+    public async Task SearchAsync_PlainDecimal_IsAccepted()
+    {
+        var result = await SearchItems(Request("unit_price", "eq", "1.50"));
+
+        result.Total.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("01/02/2025")]
+    [InlineData("Jan 2 2025")]
+    [InlineData("yesterday")]
+    public async Task SearchAsync_DateThatIsNotIso8601_IsRejected(string value) =>
+        await AssertInvalidFilter(() => Search(Request("created_at", "gte", value)));
+
     [Fact]
     public async Task SearchAsync_Pagination_IsZeroBasedAndReportsTotal()
     {

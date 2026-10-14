@@ -135,7 +135,13 @@ public static class SearchExecutor
         var member = PropertyAccess(parameter, property);
         try
         {
-            return condition.Op.ToLowerInvariant() switch
+            var op = condition.Op.ToLowerInvariant();
+            if (op is "gt" or "gte" or "lt" or "lte" or "between")
+            {
+                RequireOrderable(property);
+            }
+
+            return op switch
             {
                 "eq" => Expression.Equal(member, Constant(condition.Value, property)),
                 "neq" => Expression.NotEqual(member, Constant(condition.Value, property)),
@@ -155,6 +161,17 @@ public static class SearchExecutor
                 $"Invalid value for field: {field}",
                 ErrorCodes.ValidationInvalidFilter,
                 new Dictionary<string, object?> { ["field"] = field });
+        }
+    }
+
+    // Enum and bool columns have no meaningful order (an enum is stored as its text code, so "greater than"
+    // would compare alphabetically): only equality and membership make sense for them.
+    private static void RequireOrderable(IProperty property)
+    {
+        var type = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType;
+        if (type.IsEnum || type == typeof(bool))
+        {
+            throw new FormatException("Ordering operators are not supported for this field type");
         }
     }
 
@@ -213,6 +230,10 @@ public static class SearchExecutor
         _ => throw new FormatException("A list of values is required"),
     };
 
+    // yyyy-MM-dd... only: DateTimeOffset.TryParse alone also guesses "01/02/2025" and "Jan 2 2025".
+    private static bool LooksLikeIsoDate(string text) =>
+        text.Length >= 10 && text[4] == '-' && text[7] == '-' && text[..4].All(char.IsAsciiDigit);
+
     private static object? ConvertValue(object? raw, Type clrType)
     {
         var nullable = Nullable.GetUnderlyingType(clrType);
@@ -263,17 +284,19 @@ public static class SearchExecutor
             return unsigned;
         }
 
-        if (type == typeof(decimal) && decimal.TryParse(text, NumberStyles.Number, culture, out var number))
+        if (type == typeof(decimal) && decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, culture, out var number))
         {
             return number;
         }
 
-        if (type == typeof(DateTimeOffset) && DateTimeOffset.TryParse(text, culture, DateTimeStyles.AssumeUniversal, out var date))
+        if (type == typeof(DateTimeOffset) && LooksLikeIsoDate(text) && DateTimeOffset.TryParse(text, culture, DateTimeStyles.AssumeUniversal, out var date))
         {
             return date;
         }
 
-        if (type.IsEnum && Enum.TryParse(type, text, true, out var enumValue))
+        // Names only: Enum.TryParse would also accept "1" or "99" (an undefined value the converter cannot map).
+        if (type.IsEnum && char.IsAsciiLetter(text[0]) && Enum.TryParse(type, text, true, out var enumValue)
+            && Enum.IsDefined(type, enumValue))
         {
             return enumValue;
         }
