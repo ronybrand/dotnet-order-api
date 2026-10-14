@@ -200,7 +200,7 @@ public class SearchRequestValidatorTests
 
     private static SearchRequest WithFilters(IReadOnlyDictionary<string, IReadOnlyList<FilterCondition>> filters) => new(Filters: filters);
 
-    private static IReadOnlyDictionary<string, IReadOnlyList<FilterCondition>> OneFilter(params FilterCondition[] conditions) =>
+    private static Dictionary<string, IReadOnlyList<FilterCondition>> OneFilter(params FilterCondition[] conditions) =>
         new Dictionary<string, IReadOnlyList<FilterCondition>> { ["name"] = conditions };
 
     [Fact]
