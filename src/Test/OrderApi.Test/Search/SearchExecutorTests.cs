@@ -11,6 +11,7 @@ namespace OrderApi.Test.Search;
 public class SearchExecutorTests : IDisposable
 {
     private static readonly string[] InFilterValues = ["Alice", "Diego"];
+    private static readonly string[] EnumBetweenBounds = ["OPEN", "CONFIRMED"];
     private static readonly string[] BetweenBounds = ["2025-01-02T00:00:00+00:00", "2025-01-03T00:00:00+00:00"];
 
     private readonly AppDbContext _db;
@@ -87,7 +88,7 @@ public class SearchExecutorTests : IDisposable
     {
         var result = await Search(Request(sort: sort));
 
-        result.Items.First().Name.Should().Be(expectedFirst);
+        result.Items[0].Name.Should().Be(expectedFirst);
     }
 
     [Fact]
@@ -224,7 +225,7 @@ public class SearchExecutorTests : IDisposable
 
     [Fact]
     public async Task SearchAsync_BetweenOnEnum_IsRejected() =>
-        await AssertInvalidFilter(() => SearchOrders(Request("status", "between", new[] { "OPEN", "CONFIRMED" })));
+        await AssertInvalidFilter(() => SearchOrders(Request("status", "between", EnumBetweenBounds)));
 
     [Theory]
     [InlineData("1")]
