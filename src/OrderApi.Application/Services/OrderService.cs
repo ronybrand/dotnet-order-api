@@ -40,6 +40,7 @@ public sealed class OrderService(
             CreatedBy = currentUser.UserName,
             UpdatedBy = currentUser.UserName,
         };
+        customers.MarkReferenced(customer);
         await orders.AddAsync(order, cancellationToken);
         return MapToDto(order);
     }

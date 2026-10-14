@@ -10,6 +10,9 @@ public class Customer : IAuditable, ISoftDeletable
     [Sensitive] public string? PassportNumber { get; set; }
     [Sensitive] public string Email { get; set; } = string.Empty;
 
+    /// <summary>Optimistic concurrency token (Postgres xmin).</summary>
+    public uint Version { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = string.Empty;

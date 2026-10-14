@@ -82,6 +82,12 @@ namespace OrderApi.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("updated_by");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_customers");
 

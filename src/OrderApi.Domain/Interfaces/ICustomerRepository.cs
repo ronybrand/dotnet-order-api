@@ -10,6 +10,11 @@ public interface ICustomerRepository
     Task<bool> ExistsByTaxIdAsync(string taxId, Guid? excludeId, CancellationToken cancellationToken = default);
     Task<bool> ExistsByPassportNumberAsync(string passportNumber, Guid? excludeId, CancellationToken cancellationToken = default);
     Task AddAsync(Customer customer, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Flags the customer row as written in the next save, so that a concurrent soft delete (or update) that read
+    /// the same version fails with a concurrency conflict instead of leaving an order for a deleted customer.
+    /// </summary>
+    void MarkReferenced(Customer customer);
     Task UpdateAsync(Customer customer, CancellationToken cancellationToken = default);
     Task<PagedResult<Customer>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
 }

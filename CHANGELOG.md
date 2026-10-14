@@ -17,6 +17,10 @@ releases (`main` é deployado continuamente); as entradas abaixo agrupam o hist�
 
 ### Fixed
 
+- `Customer` ganhou token de concorrência (`xmin`); criar um pedido reescreve a linha do cliente no mesmo `SaveChanges`,
+  então excluir o cliente em paralelo falha com 409 em vez de deixar pedido ativo de cliente excluído. O `PUT` de cliente
+  também deixa de perder atualizações concorrentes.
+- Mensagens do RabbitMQ levam `message_id` e o worker ignora reentrega de um id já enviado por e-mail.
 - `tax_id` persistido e comparado na forma canônica (maiúsculas, sem `.`/`-`/`/`); mínimo de 5 letras ou dígitos.
 - Quantidade por item limitada a `FieldLimits.MaxQuantity` (10.000).
 - Corpo acima do limite (413) e requisições malformadas do Kestrel não viram mais 500.

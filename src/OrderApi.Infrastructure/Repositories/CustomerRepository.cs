@@ -27,6 +27,9 @@ public sealed class CustomerRepository(AppDbContext db) : ICustomerRepository
         await SaveAsync(cancellationToken);
     }
 
+    // Re-writing the current value still produces a new row version (xmin), which is all the guard needs.
+    public void MarkReferenced(Customer customer) => db.Entry(customer).Property(c => c.Name).IsModified = true;
+
     public Task UpdateAsync(Customer customer, CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
 
     public Task<PagedResult<Customer>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default) =>

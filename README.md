@@ -50,7 +50,11 @@ argument before the controller, which only delegates to the service. Creating or
 for create and `200` for the update-style endpoints (`204` for delete). A status change from `confirm` or `cancel`
 (not every update, and only if the customer has an e-mail) publishes to RabbitMQ after the database commit: a
 publish failure is only logged and never reaches the HTTP response. A separate `OrderApi.Worker` process consumes the
-queue and sends the e-mail through SMTP, retrying 3 times with a 2s backoff before nacking to the dead-letter queue. An invalid recipient address is a permanent failure and goes to the dead-letter queue without retries. Outside Development both the broker and the SMTP relay must use TLS and the broker needs explicit credentials (`RabbitMq__UserName`, `RabbitMq__Password`, `RabbitMq__UseTls=true`, `Smtp__UseStartTls=true`); the API and worker fail at startup otherwise. `RabbitMq:AllowInsecure` and `Smtp:AllowInsecure` (plain connection to the local RabbitMQ/Mailpit) are set only in `appsettings.Development.json`.
+queue and sends the e-mail through SMTP, retrying 3 times with a 2s backoff before nacking to the dead-letter queue. An invalid recipient address is a permanent failure and goes to the dead-letter queue without retries. Outside Development both the broker and the SMTP relay must use TLS and the broker needs explicit credentials (`RabbitMq__UserName`, `RabbitMq__Password`, `RabbitMq__UseTls=true`, `Smtp__UseStartTls=true`); the API and worker fail at startup otherwise. Each message carries a `message_id` (kept across retries) and the worker skips an id it already e-mailed, which absorbs a redelivery after a lost ack within the same worker process (RabbitMQ stays at-least-once; this is not a distributed exactly-once guarantee).
+
+The dead-letter queue holds customer e-mail and name, so give it a retention limit with a broker **policy** instead of a queue argument (changing the declared arguments of an existing queue makes RabbitMQ answer 406 PRECONDITION_FAILED): `rabbitmqctl set_policy dlq-retention "^order\.status\.changed\.dlq$" '{"message-ttl":604800000}' --apply-to queues` keeps dead letters for 7 days.
+
+`RabbitMq:AllowInsecure` and `Smtp:AllowInsecure` (plain connection to the local RabbitMQ/Mailpit) are set only in `appsettings.Development.json`.
 The two paths never block each other.
 
 ## Domain
