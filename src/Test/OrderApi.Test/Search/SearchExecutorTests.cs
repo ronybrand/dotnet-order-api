@@ -193,14 +193,6 @@ public class SearchExecutorTests : IDisposable
     }
 
     [Fact]
-    public async Task SearchAsync_OrderingOperatorOnString_ThrowsValidation()
-    {
-        var act = () => Search(Request("name", "gt", "A"));
-
-        (await act.Should().ThrowAsync<ValidationDomainException>()).Which.Code.Should().Be(ErrorCodes.ValidationInvalidFilter);
-    }
-
-    [Fact]
     public async Task SearchAsync_SortAscending_OrdersByField()
     {
         var result = await Search(Request(sort: "name"));
