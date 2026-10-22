@@ -8,9 +8,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A newer push to a pull request makes the older run pointless; a run on main is never cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -23,6 +29,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -47,9 +54,12 @@ jobs:
 
   migration:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16
+        # Digest mirrors docker-compose.yml: the same image runs locally and here, and a retagged upstream
+        # tag cannot change what the job runs against.
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -78,6 +88,7 @@ jobs:
   docker-build:
     needs: [test, migration]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Build-only on PRs (validates the Dockerfile still produces working images); push to GHCR only
     # from main, where GITHUB_TOKEN has package-write on this repo by default - a fork's PR run gets
     # a read-only token, so pushing there would just fail, not add security value.
@@ -127,6 +138,7 @@ jobs:
   # a server or touching a database, so this job needs no Postgres service.
   docs:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -149,6 +161,7 @@ jobs:
     # settings) to publish. Off by default so a private repository never publishes by accident.
     if: github.event_name == 'push' && vars.ENABLE_PAGES == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pages: write
